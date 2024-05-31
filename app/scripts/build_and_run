@@ -77,4 +77,3 @@ else
 	exit 1
 fi
 
-"$APP_ROOT_DIR/staging/$command" $profile -ZoteroDebugText -jsconsole -purgecaches $PARAMS "$@"
