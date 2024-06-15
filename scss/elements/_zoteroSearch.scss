@@ -1,6 +1,6 @@
 zoterosearch {
 	#search-box > hbox, #search-box > groupbox {
-		margin-left: 6px;
+		margin: 0 6px;
 	}
 
 	groupbox {
@@ -40,9 +40,17 @@ zoterosearch {
 			flex: 1;
 		}
 	}
+
+	#joinModeMenu {
+		min-width: 60px;
+	}
+	
+	#conditionsmenu {
+		min-width: 15em;
+	}
 	
 	#operatorsmenu {
-		width: 15em;
+		min-width: 13em;
 	}
 
 	#condition-tooltips tooltip

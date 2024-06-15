@@ -1434,7 +1434,7 @@ Zotero.Server.Connector.Import.prototype = {
 		}
 		
 		try {
-			var session = Zotero.Server.Connector.SessionManager.create(requestData.query.session);
+			var session = Zotero.Server.Connector.SessionManager.create(requestData.searchParams.get('session'));
 		}
 		catch (e) {
 			return [409, "application/json", JSON.stringify({ error: "SESSION_EXISTS" })];
@@ -1473,7 +1473,7 @@ Zotero.Server.Connector.InstallStyle.prototype = {
 	init: Zotero.Promise.coroutine(function* (requestData) {
 		try {
 			var { styleTitle, styleID } = yield Zotero.Styles.install(
-				requestData.data, requestData.query.origin || null, true
+				requestData.data, requestData.searchParams.get('origin') || null, true
 			);
 		} catch (e) {
 			return [400, "text/plain", e.message];
@@ -1695,13 +1695,15 @@ Zotero.Server.Connector.Ping.prototype = {
 				//Zotero.debug("Setting active URL to " + req.data.activeURL);
 				Zotero.QuickCopy.lastActiveURL = req.data.activeURL;
 			}
-			let translatorsHash = await Zotero.Translators.getTranslatorsHash();
+			let translatorsHash = await Zotero.Translators.getTranslatorsHash(false);
+			let sortedTranslatorHash = await Zotero.Translators.getTranslatorsHash(true);
 			
 			let response = {
 				prefs: {
 					automaticSnapshots: Zotero.Prefs.get('automaticSnapshots'),
 					googleDocsAddNoteEnabled: true,
-					translatorsHash
+					translatorsHash,
+					sortedTranslatorHash
 				}
 			};
 			if (Zotero.QuickCopy.hasSiteSettings()) {

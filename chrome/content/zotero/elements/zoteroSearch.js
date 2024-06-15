@@ -40,15 +40,15 @@
 			<vbox xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
 					id="search-box" flex="1" onkeypress="this.closest('zoterosearch').handleKeyPress(event)">
 				<hbox align="center">
-					<label value="&zotero.search.searchInLibrary;" control="libraryMenu"/>
-					<menulist id="libraryMenu" oncommand="this.closest('zoterosearch').updateLibrary();" native="true">
+					<label id="libraryMenu-label" value="&zotero.search.searchInLibrary;" control="libraryMenu"/>
+					<menulist id="libraryMenu" aria-labelledby="libraryMenu-label" oncommand="this.closest('zoterosearch').updateLibrary();" native="true">
 						<menupopup/>
 					</menulist>
 				</hbox>
 				<groupbox>
 					<caption align="center">
-						<label value="&zotero.search.joinMode.prefix;"/>
-						<menulist id="joinModeMenu" oncommand="this.closest('zoterosearch').updateJoinMode();" native="true">
+						<label id="joinModeMenu-label" value="&zotero.search.joinMode.prefix;"/>
+						<menulist id="joinModeMenu" aria-labelledby="joinModeMenu-label" oncommand="this.closest('zoterosearch').updateJoinMode();" native="true">
 							<menupopup>
 								<menuitem label="&zotero.search.joinMode.any;" value="any"/>
 								<menuitem label="&zotero.search.joinMode.all;" value="all" selected="true"/>
@@ -203,6 +203,11 @@
 		}
 
 		handleKeyPress(event) {
+			// Space/Enter on toolbarbutton will click it
+			if (event.target.tagName == "toolbarbutton" && [" ", "Enter"].includes(event.key)) {
+				event.target.click();
+				return;
+			}
 			switch (event.keyCode) {
 				case event.DOM_VK_RETURN:
 					this.active = true;
@@ -239,8 +244,8 @@
 					<menupopup/>
 				</menulist>
 				<zoterosearchagefield id="value-date-age" class="value-date-age" hidden="true"/>
-				<toolbarbutton id="remove" class="zotero-clicky zotero-clicky-minus" value="-" onclick="this.closest('zoterosearchcondition').onRemoveClicked(event)"/>
-				<toolbarbutton id="add" class="zotero-clicky zotero-clicky-plus" value="+" onclick="this.closest('zoterosearchcondition').onAddClicked(event)"/>
+				<toolbarbutton id="remove" tabindex="0" data-l10n-id="advanced-search-remove-btn" class="zotero-clicky zotero-clicky-minus" value="-" onclick="this.closest('zoterosearchcondition').onRemoveClicked(event)"/>
+				<toolbarbutton id="add" tabindex="0" data-l10n-id="advanced-search-add-btn" class="zotero-clicky zotero-clicky-plus" value="+" onclick="this.closest('zoterosearchcondition').onAddClicked(event)"/>
 			</html:div>
 		`, ['chrome://zotero/locale/zotero.dtd', 'chrome://zotero/locale/searchbox.dtd']);
 
@@ -398,7 +403,7 @@
 				);
 			}
 			
-			this.updateSubmenuCheckboxes(conditionsMenu);
+			this.updateMenuCheckboxesRecursive(conditionsMenu, this.selectedCondition);
 			
 			// Display appropriate operators for condition
 			var selectThis;
@@ -406,7 +411,7 @@
 			{
 				var val = operatorsList.firstChild.childNodes[i].getAttribute('value');
 				var hidden = !operators[val];
-				operatorsList.firstChild.childNodes[i].toggleAttribute('hidden', hidden);
+				operatorsList.firstChild.childNodes[i].setAttribute('hidden', hidden);
 				if (!hidden && (selectThis == null || this.selectedOperator == val))
 				{
 					selectThis = i;
@@ -415,6 +420,7 @@
 			operatorsList.selectedIndex = selectThis;
 			// Setting `selected` does not change `checked`. Should explicitly set it.
 			operatorsList.selectedItem.setAttribute('checked', true);
+			this.updateMenuCheckboxesRecursive(operatorsList, operatorsList.selectedItem.getAttribute('value'));
 			
 			// Generate drop-down menu instead of textbox for certain conditions
 			switch (conditionName) {
@@ -541,6 +547,14 @@
 				this.querySelector('#valuemenu').hidden = true;
 				this.querySelector('#value-date-age').hidden = true;
 			}
+			var conditionsMenu = this.querySelector('#conditionsmenu');
+			document.l10n.setAttributes(conditionsMenu, 'advanced-search-conditions-menu', { label: conditionsMenu.label });
+			document.l10n.setAttributes(operatorsList, 'advanced-search-operators-menu', { label: operatorsList.label });
+			var valueMenu = this.querySelector("#valuemenu");
+			if (!valueMenu.hidden) {
+				document.l10n.setAttributes(valueMenu, 'advanced-search-condition-input', { label: valueMenu.label });
+			}
+			this.updateMenuCheckboxesRecursive(operatorsList, operatorsList.selectedItem.getAttribute('value'));
 		}
 
 		createValueMenu(rows) {
@@ -678,11 +692,11 @@
 			}
 		}
 
-		updateSubmenuCheckboxes(menu) {
+		updateMenuCheckboxesRecursive(menu, value) {
 			for (let i = 0; i < menu.itemCount; i++) {
 				let item = menu.getItemAtIndex(i);
 				if (item.localName == 'menuitem') {
-					if (item.getAttribute('value') == this.selectedCondition) {
+					if (item.getAttribute('value') == value) {
 						item.setAttribute('checked', true);
 					}
 					else {
@@ -690,7 +704,7 @@
 					}
 				}
 				else {
-					this.updateSubmenuCheckboxes(item);
+					this.updateMenuCheckboxesRecursive(item, value);
 				}
 			}
 		}
@@ -778,7 +792,9 @@
 					autocompletesearch="zotero"
 					autocompletepopup="search-autocomplete-popup"
 					timeout="250"
-					type="search"/>
+					type="search"
+					data-l10n-id="advanced-search-condition-input"
+					/>
 				
 				<xul:toolbarbutton
 						id="textbox-button"

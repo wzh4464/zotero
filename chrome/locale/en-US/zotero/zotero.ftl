@@ -8,6 +8,8 @@ return-or-enter =
 general-remove = Remove
 general-add = Add
 general-remind-me-later = Remind Me Later
+general-choose-file = Choose File…
+general-open-settings = Open Settings
 
 menu-file-show-in-finder =
     .label = Show in Finder
@@ -124,6 +126,8 @@ itembox-button-options =
 itembox-button-merge =
     .aria-label = Select version of { $field } field
 
+create-parent-intro = Enter a DOI, ISBN, PMID, arXiv ID, or ADS Bibcode to identify this file:
+
 reader-use-dark-mode-for-content =
     .label = Use Dark Mode for Content
 
@@ -219,11 +223,13 @@ rtfScan-introPage-description2 = To get started, select an RTF input file and an
 rtfScan-input-file = Input File
 rtfScan-output-file = Output File
 
-zotero-file-none-selected =
-    .value = No file selected
-
-zotero-file-choose =
-    .label = Choose File…
+rtfScan-no-file-selected = No file selected
+rtfScan-choose-input-file =
+    .label = { general-choose-file }
+    .aria-label = Choose Input File
+rtfScan-choose-output-file =
+    .label = { general-choose-file }
+    .aria-label = Choose Output File
 
 rtfScan-intro-page = 
     .label = Introduction
@@ -518,6 +524,29 @@ item-pane-header-bibEntry =
 item-pane-header-more-options =
     .label = More Options
 
+locate-library-lookup-no-resolver = You must choose a resolver from the { $pane } pane of the { -app-name } settings.
 
 architecture-win32-warning-message = { -app-name } is running in 32-bit mode on a 64-bit version of Windows. { -app-name } will run more efficiently in 64-bit mode.
 architecture-warning-action = Download 64-bit { -app-name }
+
+first-run-guidance-quickFormat = Type a title, author, and/or year to search for a reference.
+    
+    After you’ve made your selection, click the bubble or select it via the keyboard and press ↓/Space to show citation options such as page number, prefix, and suffix.
+    
+    You can also add a page number directly by including it with your search terms or typing it after the bubble and pressing { return-or-enter }.
+
+first-run-guidance-authorMenu = { -app-name } lets you specify editors and translators too. You can turn an author into an editor or translator by selecting from this menu.
+
+advanced-search-remove-btn =
+    .tooltiptext = { general-remove }
+advanced-search-add-btn =
+    .tooltiptext = { general-add }
+advanced-search-conditions-menu =
+    .aria-label = Search condition
+    .label = { $label }
+advanced-search-operators-menu =
+    .aria-label = Operator
+    .label = { $label }
+advanced-search-condition-input =
+    .aria-label = Value
+    .label = { $label }
