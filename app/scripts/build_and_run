@@ -77,3 +77,11 @@ else
 	exit 1
 fi
 
+# codesign --deep --force --verify --verbose --sign "Self-Signed Developer ID" /Volumes/Mac_Ext/codes/zotero/app/staging/Zotero.app
+code_sign() {
+	if [ "`uname`" = "Darwin" ]; then
+		codesign --deep --force --verify --verbose --sign "Self-Signed Developer ID" "$APP_ROOT_DIR/staging/Zotero.app"
+	fi
+}
+
+code_sign
