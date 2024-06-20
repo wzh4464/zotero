@@ -112,10 +112,24 @@ class LocalAPIEndpoint {
 			}
 			return this.makeResponse(400, 'text/plain', 'Only data for the logged-in user is available locally -- use userID 0' + suffix);
 		}
-
-		requestData.libraryID = requestData.pathParams.groupID
-			? Zotero.Groups.getLibraryIDFromGroupID(parseInt(requestData.pathParams.groupID))
-			: Zotero.Libraries.userLibraryID;
+		
+		if (requestData.pathParams.groupID) {
+			let groupID = requestData.pathParams.groupID;
+			let libraryID = Zotero.Groups.getLibraryIDFromGroupID(parseInt(groupID));
+			if (!libraryID) {
+				return this.makeResponse(404, 'text/plain', 'Not found');
+			}
+			requestData.libraryID = libraryID;
+		}
+		else {
+			requestData.libraryID = Zotero.Libraries.userLibraryID;
+		}
+		
+		let library = Zotero.Libraries.get(requestData.libraryID);
+		if (!library.getDataLoaded('item')) {
+			Zotero.debug("Waiting for items to load for library " + library.libraryID);
+			await library.waitForDataLoad('item');
+		}
 		
 		let response = await this.run(requestData);
 		if (response.data) {

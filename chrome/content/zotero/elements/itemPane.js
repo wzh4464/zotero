@@ -30,7 +30,7 @@
 			<deck id="zotero-item-pane-content" class="zotero-item-pane-content" selectedIndex="0" flex="1">
 				<item-message-pane id="zotero-item-message" />
 				
-				<item-details id="zotero-item-details" />
+				<item-details id="zotero-item-details" tabType="library"/>
 				
 				<note-editor id="zotero-note-editor" flex="1" notitle="1"
 					previousfocus="zotero-items-tree" />
@@ -112,7 +112,11 @@
 			if (this.data.length == 1) {
 				let item = this.data[0];
 				
-				if (item.isNote()) {
+				// If a collection or search is selected, it must be in the trash.
+				if (item.isCollection() || item.isSearch()) {
+					renderStatus = this.renderMessage();
+				}
+				else if (item.isNote()) {
 					hideSidenav = true;
 					renderStatus = this.renderNoteEditor(item);
 				}
@@ -220,7 +224,30 @@
 			// Display label in the middle of the item pane
 			else {
 				if (count) {
-					msg = Zotero.getString('pane.item.selected.multiple', count);
+					let key;
+					// In the trash, we have to check the object type
+					if (this.collectionTreeRow.isTrash()) {
+						let obj = this.data[0];
+						if (this.data.every(x => x.isCollection())) {
+							key = 'item-pane-message-collections-selected';
+						}
+						else if (this.data.every(x => x.isSearch())) {
+							key = 'item-pane-message-searches-selected';
+						}
+						else if (this.data.every(x => x.isItem())) {
+							key = 'item-pane-message-items-selected';
+						}
+						else {
+							key = 'item-pane-message-objects-selected';
+						}
+					}
+					else {
+						key = 'item-pane-message-items-selected';
+					}
+					// TODO: Add mechanism for this to setItemPaneMessage()
+					let elem = document.createXULElement('description');
+					document.l10n.setAttributes(elem, key, { count });
+					msg = elem;
 				}
 				else {
 					let rowCount = this.itemsView.rowCount;

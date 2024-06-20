@@ -10,6 +10,7 @@ general-add = Add
 general-remind-me-later = Remind Me Later
 general-choose-file = Choose File…
 general-open-settings = Open Settings
+general-help = Help
 
 menu-file-show-in-finder =
     .label = Show in Finder
@@ -122,7 +123,7 @@ item-button-view-online =
     .tooltiptext = {view-online}
 
 itembox-button-options =
-    .tooltiptext = Open Context Menu
+    .tooltiptext = Open context menu
 itembox-button-merge =
     .aria-label = Select version of { $field } field
 
@@ -257,6 +258,16 @@ rtfScan-complete-page =
 
 rtfScan-complete-page-description = Your document has now been scanned and processed. Please ensure that it is formatted correctly.
 
+runJS-title = Run JavaScript
+runJS-editor-label = Code:
+runJS-run = Run
+runJS-help = { general-help }
+runJS-result = {
+    $type ->
+        [async] Return value:
+        *[other] Result:
+}
+runJS-run-async = Run as async function
 
 bibliography-style-label = Citation Style:
 bibliography-locale-label = Language:
@@ -431,10 +442,6 @@ sidenav-tags =
     .tooltiptext = { pane-tags }
 sidenav-related =
     .tooltiptext = { pane-related }
-sidenav-collapse =
-    .tooltiptext = Collapse Sidebar
-sidenav-expand =
-    .tooltiptext = Expand Sidebar
 
 pin-section =
     .label = Pin Section
@@ -523,6 +530,24 @@ item-pane-header-bibEntry =
     .label = Bibliography Entry
 item-pane-header-more-options =
     .label = More Options
+
+item-pane-message-items-selected = { $count ->
+                                             [one] { $count } item selected
+                                            *[other] { $count } items selected
+                                    }
+item-pane-message-collections-selected = { $count ->
+                                             [one] { $count } collection selected
+                                            *[other] { $count } collections selected
+                                         }
+item-pane-message-searches-selected = { $count ->
+                                          [one] { $count } search selected
+                                         *[other] { $count } searches selected
+                                      }
+item-pane-message-objects-selected = { $count ->
+                                          [one] { $count } object selected
+                                         *[other] { $count } objects selected
+                                     }
+
 
 locate-library-lookup-no-resolver = You must choose a resolver from the { $pane } pane of the { -app-name } settings.
 
