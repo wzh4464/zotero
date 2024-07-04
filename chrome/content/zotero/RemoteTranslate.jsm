@@ -25,15 +25,15 @@
 
 var EXPORTED_SYMBOLS = ["RemoteTranslate"];
 
-const { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
-
 ChromeUtils.import("chrome://zotero/content/actors/ActorManager.jsm");
-
 ChromeUtils.defineESModuleGetters(this, {
 	Zotero: "chrome://zotero/content/zotero.mjs",
 });
+
+const { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
 XPCOMUtils.defineLazyModuleGetters(this, {
 	TranslationManager: "chrome://zotero/content/actors/TranslationParent.jsm",
+	ZOTERO_CONFIG: "resource://zotero/config.js",
 });
 
 class RemoteTranslate {
@@ -172,6 +172,10 @@ class RemoteTranslate {
 		let items = [];
 		try {
 			let jsonItems = await actor.sendQuery("translate", { translator: this._translator, id: this._id });
+			if (jsonItems === null) {
+				Zotero.debug('RemoteTranslate: translate query returned null');
+				return null;
+			}
 			if (options.libraryID !== false) {
 				let itemsLeftToSave = jsonItems.length;
 				let attachmentsInProgress = new Set();
@@ -273,7 +277,7 @@ class RemoteTranslate {
 	}
 	
 	_getPrefs(keys) {
-		let rootBranch = 'extensions.zotero.'; // ZOTERO_CONFIG isn't available here
+		let rootBranch = ZOTERO_CONFIG.PREF_BRANCH;
 		let prefs = {};
 		for (let key of keys) {
 			if (key.endsWith('.')) {

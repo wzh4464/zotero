@@ -9,7 +9,7 @@
 
 <!ENTITY zotero.preferences.prefpane.general "Obecné">
 
-<!ENTITY zotero.preferences.interface "Interface">
+<!ENTITY zotero.preferences.interface "Rozhraní">
 <!ENTITY zotero.preferences.fileHandling "Nakládání se souborem">
 <!ENTITY zotero.preferences.automaticSnapshots "Automaticky udělat snímek při vytváření položky z internetových stránek">
 <!ENTITY zotero.preferences.downloadAssociatedFiles "Automaticky připojit propojené PDF a ostatní soubory při ukládání položek">
@@ -44,11 +44,6 @@
 <!ENTITY zotero.preferences.feeds.sorting.newest "Nejnovější položka prvni">
 <!ENTITY zotero.preferences.feeds.sorting.oldest "Nejstarší položka první">
 <!ENTITY zotero.preferences.feeds.feedDefaults "Nastavení kanálů">
-
-<!ENTITY zotero.preferences.openurl.choose "Choose a resolver…">
-<!ENTITY zotero.preferences.openurl.custom "Vlastní...">
-<!ENTITY zotero.preferences.openurl.server "Resolver:">
-<!ENTITY zotero.preferences.openurl.version "Verze">
 
 <!ENTITY zotero.preferences.prefpane.sync "Sync">
 <!ENTITY zotero.preferences.sync.username "Uživatelské jméno:">
@@ -88,7 +83,7 @@
 <!ENTITY zotero.preferences.sync.reset.resetFileSyncHistory "Resetovat historii synchronizace souborů">
 <!ENTITY zotero.preferences.sync.reset.resetFileSyncHistory.desc "Porovnat všechny připojené soubory se vzdáleným úložištěm">
 <!ENTITY zotero.preferences.sync.reset "Resetování">
-<!ENTITY zotero.preferences.sync.reset.showResetOptions "Show Reset Options…">
+<!ENTITY zotero.preferences.sync.reset.showResetOptions "Ukázat možnosti resetování...">
 <!ENTITY zotero.preferences.sync.reset.button "Reset...">
 
 

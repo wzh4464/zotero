@@ -33,6 +33,21 @@ describe("Zotero.ItemTree", function() {
 		assert.isFalse(itemsView.getRowIndexByID(itemID));
 	});
 	
+	it("shouldn't show items in subcollections in trash when recursiveCollections=true", async function () {
+		Zotero.Prefs.set('recursiveCollections', true);
+		var c1 = await createDataObject('collection');
+		var c2 = await createDataObject('collection', { parentID: c1.id });
+		var c3 = await createDataObject('collection', { parentID: c1.id, deleted: true });
+		var item1 = await createDataObject('item', { collections: [c2.id] });
+		var item2 = await createDataObject('item', { collections: [c3.id] });
+		
+		await select(win, c1);
+		// item2 is in a deleted collection and shouldn't be shown
+		assert.sameMembers(zp.itemsView._rows.map(x => x.id), [item1.id]);
+		
+		Zotero.Prefs.clear('recursiveCollections');
+	});
+	
 	describe("when performing a quick search", function () {
 		let quicksearch;
 		
@@ -461,7 +476,7 @@ describe("Zotero.ItemTree", function() {
 		
 		it("should reselect the same row when an item is removed", function* () {
 			var collection = yield createDataObject('collection');
-			yield waitForItemsLoad(win);
+			yield selectCollection(win, collection);
 			itemsView = zp.itemsView;
 			
 			var items = [];
@@ -559,7 +574,7 @@ describe("Zotero.ItemTree", function() {
 		
 		it.skip("should keep first visible selected item in position when other items are added with skipSelect", function* () {
 			var collection = yield createDataObject('collection');
-			yield waitForItemsLoad(win);
+			yield select(win, collection);
 			itemsView = zp.itemsView;
 			
 			var treebox = itemsView._treebox;
@@ -615,7 +630,7 @@ describe("Zotero.ItemTree", function() {
 		
 		it("shouldn't scroll items list if at top when other items are added with skipSelect", function* () {
 			var collection = yield createDataObject('collection');
-			yield waitForItemsLoad(win);
+			yield select(win, collection);
 			itemsView = zp.itemsView;
 			
 			var treebox = itemsView._treebox;
@@ -663,23 +678,24 @@ describe("Zotero.ItemTree", function() {
 			assert.equal(treebox.getFirstVisibleRow(), 0);
 		});
 		
-		it("should update search results when items are added", function* () {
-			var search = yield createDataObject('search');
-			var title = search.getConditions()[0].value;
-			
-			yield waitForItemsLoad(win);
+		it("should update search results when items are added", async function () {
+			var search = await createDataObject('search');
+			await select(win, search);
 			assert.equal(zp.itemsView.rowCount, 0);
 			
-			// Add an item matching search
-			var item = yield createDataObject('item', { title });
+			var title = search.getConditions()[0].value;
 			
-			yield waitForItemsLoad(win);
+			// Add an item matching search
+			var item = await createDataObject('item', { title });
+			
+			await waitForItemsLoad(win);
 			assert.equal(zp.itemsView.rowCount, 1);
 			assert.equal(zp.itemsView.getRowIndexByID(item.id), 0);
 		});
 		
 		it("should re-sort search results when an item is modified", async function () {
 			var search = await createDataObject('search');
+			await select(win, search);
 			itemsView = zp.itemsView;
 			var title = search.getConditions()[0].value;
 			
@@ -726,7 +742,7 @@ describe("Zotero.ItemTree", function() {
 			});
 			yield search.saveTx();
 			
-			yield waitForItemsLoad(win);
+			yield select(win, search);
 			
 			// Add an item that doesn't match search
 			var item = yield createDataObject('item', { title: title2 });
@@ -758,15 +774,12 @@ describe("Zotero.ItemTree", function() {
 		});
 		
 		describe("Trash", function () {
-			var one, two, three;
 			it("should remove untrashed parent item when last trashed child is deleted", function* () {
-				var userLibraryID = Zotero.Libraries.userLibraryID;
 				var item = yield createDataObject('item');
 				var note = yield createDataObject(
 					'item', { itemType: 'note', parentID: item.id, deleted: true }
 				);
-				yield cv.selectByID("T" + userLibraryID);
-				yield waitForItemsLoad(win);
+				yield selectTrash(win);
 				assert.isNumber(zp.itemsView.getRowIndexByID(item.id));
 				var promise = waitForDialog();
 				yield zp.emptyTrash();
@@ -778,65 +791,57 @@ describe("Zotero.ItemTree", function() {
 			});
 
 			it("should show only top-most trashed collection", async function() {
-				var userLibraryID = Zotero.Libraries.userLibraryID;
-				var ran = Zotero.Utilities.randomString();
-				var objectType = "collection";
-				one = await createDataObject(objectType, { name: ran + "_DELETE_ONE" });
-				two = await createDataObject(objectType, { name: ran + "_DELETE_TWO", parentID: one.id });
-				three = await createDataObject(objectType, { name: ran + "_DELETE_THREE", parentID: two.id });
-
-				one.deleted = true;
-				await one.saveTx();
+				var c1 = await createDataObject('collection', { deleted: true });
+				var c2 = await createDataObject('collection', { parentID: c1.id });
+				var c3 = await createDataObject('collection', { parentID: c2.id });
 
 				// Go to trash
-				await zp.collectionsView.selectByID("T" + userLibraryID);
-				await waitForItemsLoad(win);
+				await selectTrash(win);
 
 				// Make sure only top-level collection shows
-				assert.isNumber(itemsView.getRowIndexByID(one.treeViewID));
-				assert.isFalse(itemsView.getRowIndexByID(two.treeViewID));
-				assert.isFalse(itemsView.getRowIndexByID(three.treeViewID));
+				assert.isNumber(itemsView.getRowIndexByID(c1.treeViewID));
+				assert.isFalse(itemsView.getRowIndexByID(c2.treeViewID));
+				assert.isFalse(itemsView.getRowIndexByID(c3.treeViewID));
 			})
 
 			it("should restore all subcollections when parent is restored", async function() {
-				var userLibraryID = Zotero.Libraries.userLibraryID;
+				var c1 = await createDataObject('collection', { deleted: true });
+				var c2 = await createDataObject('collection', { parentID: c1.id });
+				var c3 = await createDataObject('collection', { parentID: c2.id });
+				
 				// Go to trash
-				await zp.collectionsView.selectByID("T" + userLibraryID);
-				await waitForItemsLoad(win);
+				await selectTrash(win);
 
 				// Restore
-				await itemsView.selectItem(one.treeViewID);
+				await itemsView.selectItem(c1.treeViewID);
 				await zp.restoreSelectedItems();
 				
 				// Make sure it's gone from trash
-				assert.isFalse(zp.itemsView.getRowIndexByID(one.treeViewID));
-				assert.isFalse(zp.itemsView.getRowIndexByID(two.treeViewID));
-				assert.isFalse(zp.itemsView.getRowIndexByID(three.treeViewID));
+				assert.isFalse(zp.itemsView.getRowIndexByID(c1.treeViewID));
+				assert.isFalse(zp.itemsView.getRowIndexByID(c2.treeViewID));
+				assert.isFalse(zp.itemsView.getRowIndexByID(c3.treeViewID));
 
 				// Make sure it shows up back in collectionTree
-				assert.isNumber(zp.collectionsView.getRowIndexByID(one.treeViewID));
+				assert.isNumber(zp.collectionsView.getRowIndexByID(c1.treeViewID));
 			})
 
 			for (let objectType of ['collection', 'search']) {
 				it(`should remove ${objectType} from trash on delete`, async function (){
-					var userLibraryID = Zotero.Libraries.userLibraryID;
-					var ran = Zotero.Utilities.randomString();
-					one = await createDataObject(objectType, { name: ran + "_DELETE_ONE", deleted: true });
-					two = await createDataObject(objectType, { name: ran + "_DELETE_TWO", deleted: true  });
-					three = await createDataObject(objectType, { name: ran + "_DELETE_THREE", deleted: true  });
+					var o1 = await createDataObject(objectType, { deleted: true });
+					var o2 = await createDataObject(objectType, { deleted: true  });
+					var o3 = await createDataObject(objectType, { deleted: true  });
 
 					// Go to trash
-					await zp.collectionsView.selectByID("T" + userLibraryID);
-					await waitForItemsLoad(win);
+					await selectTrash(win);
 
 					// Permanently delete
-					await itemsView.selectItems([one.treeViewID, two.treeViewID, three.treeViewID]);
+					await itemsView.selectItems([o1.treeViewID, o2.treeViewID, o3.treeViewID]);
 					await itemsView.deleteSelection();
 
 					// Make sure it's gone from trash
-					assert.isFalse(zp.itemsView.getRowIndexByID(one.treeViewID));
-					assert.isFalse(zp.itemsView.getRowIndexByID(two.treeViewID));
-					assert.isFalse(zp.itemsView.getRowIndexByID(three.treeViewID));
+					assert.isFalse(zp.itemsView.getRowIndexByID(o1.treeViewID));
+					assert.isFalse(zp.itemsView.getRowIndexByID(o2.treeViewID));
+					assert.isFalse(zp.itemsView.getRowIndexByID(o3.treeViewID));
 				})
 			}
 		});

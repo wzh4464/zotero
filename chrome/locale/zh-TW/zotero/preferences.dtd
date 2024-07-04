@@ -24,11 +24,11 @@
 <!ENTITY zotero.preferences.parseRISRefer "用 Zotero 處理下載的 BibTeX/RIS/Refer 檔">
 <!ENTITY zotero.preferences.automaticTags "自動以關鍵字與主題標目作為項目的標籤">
 <!ENTITY zotero.preferences.trashAutoEmptyDaysPre "自動移除刪入垃圾筒且超過">
-<!ENTITY zotero.preferences.trashAutoEmptyDaysPost "天的項目">
+<!ENTITY zotero.preferences.trashAutoEmptyDaysPost "天以前">
 
 <!ENTITY zotero.preferences.reader.tabsTitle.label "以……顯示分頁">
-<!ENTITY zotero.preferences.reader.tabsTitle.creatorYearTitle "作者–年–標題">
-<!ENTITY zotero.preferences.reader.tabsTitle.titleCreatorYear "標題–作者–年">
+<!ENTITY zotero.preferences.reader.tabsTitle.creatorYearTitle "創作者–年–標題">
+<!ENTITY zotero.preferences.reader.tabsTitle.titleCreatorYear "標題–創作者–年">
 <!ENTITY zotero.preferences.reader.tabsTitle.filename "檔名">
 
 <!ENTITY zotero.preferences.groups "群組">
@@ -44,11 +44,6 @@
 <!ENTITY zotero.preferences.feeds.sorting.newest "新的項目在前">
 <!ENTITY zotero.preferences.feeds.sorting.oldest "舊的項目在前">
 <!ENTITY zotero.preferences.feeds.feedDefaults "預設新聞來源">
-
-<!ENTITY zotero.preferences.openurl.choose "選擇解析器……">
-<!ENTITY zotero.preferences.openurl.custom "自訂……">
-<!ENTITY zotero.preferences.openurl.server "解析器：">
-<!ENTITY zotero.preferences.openurl.version "版本：">
 
 <!ENTITY zotero.preferences.prefpane.sync "同步">
 <!ENTITY zotero.preferences.sync.username "使用者名稱：">

@@ -623,6 +623,8 @@ Zotero_Preferences.Attachment_Base_Directory = {
 				let storedPath = attachment.attachmentPath;
 				if (storedPath.startsWith(Zotero.Attachments.BASE_PATH_PLACEHOLDER)) {
 					relPath = storedPath.substr(Zotero.Attachments.BASE_PATH_PLACEHOLDER.length);
+					// Use platform-specific slashes, which PathUtils.joinRelative() requires below
+					relPath = Zotero.Attachments.fixPathSlashes(relPath);
 				}
 			}
 			catch (e) {
@@ -635,6 +637,7 @@ Zotero_Preferences.Attachment_Base_Directory = {
 			// don't touch the attachment, since it will continue to work
 			if (relPath) {
 				if (yield IOUtils.exists(PathUtils.joinRelative(basePath, relPath))) {
+					Zotero.debug(`${relPath} found within new base path -- skipping`);
 					numNewAttachments++;
 					continue;
 				}

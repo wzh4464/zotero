@@ -260,11 +260,44 @@ function waitForDialog(onOpen, button='accept', url) {
 	}))
 }
 
-var selectLibrary = Zotero.Promise.coroutine(function* (win, libraryID) {
-	libraryID = libraryID || Zotero.Libraries.userLibraryID;
-	yield win.ZoteroPane.collectionsView.selectLibrary(libraryID);
-	yield waitForItemsLoad(win);
-});
+async function select(win, object) {
+	if (object instanceof Zotero.Library) {
+		return selectLibrary(win, object);
+	}
+	if (object instanceof Zotero.Collection) {
+		return selectCollection(win, object);
+	}
+	if (object instanceof Zotero.Search) {
+		return selectSearch(win, object);
+	}
+	if (object instanceof Zotero.Item) {
+		return win.ZoteroPane.itemsView.selectItem(object.id);
+	}
+	throw new Error("Unknown object");
+}
+
+async function selectLibrary(win, libraryOrID = Zotero.Libraries.userLibraryID) {
+	var libraryID = libraryOrID instanceof Zotero.Library ? libraryOrID.libraryID : libraryOrID;
+	await win.ZoteroPane.collectionsView.selectLibrary(libraryID);
+	await waitForItemsLoad(win);
+}
+
+async function selectCollection(win, collectionOrID) {
+	var collectionID = collectionOrID instanceof Zotero.Collection ? collectionOrID.id : collectionOrID;
+	await win.ZoteroPane.collectionsView.selectCollection(collectionID);
+	await waitForItemsLoad(win);
+}
+
+async function selectSearch(win, searchOrID) {
+	var searchID = searchOrID instanceof Zotero.Search ? searchOrID.id : searchOrID;
+	await win.ZoteroPane.collectionsView.selectSearch(searchID);
+	await waitForItemsLoad(win);
+}
+
+async function selectTrash(win, libraryID = Zotero.Libraries.userLibraryID) {
+	await win.ZoteroPane.collectionsView.selectTrash(libraryID);
+	await waitForItemsLoad(win);
+}
 
 var waitForItemsLoad = Zotero.Promise.coroutine(function* (win, collectionRowToSelect) {
 	var zp = win.ZoteroPane;
@@ -339,6 +372,14 @@ function waitForNotifierEvent(event, type) {
 		}
 	}}, [type], 'test', 101);
 	return deferred.promise;
+}
+
+/**
+ * Hang tests for manual inspection
+ */
+async function pause(thisObj) {
+	thisObj.timeout(100000000);
+	await Zotero.Promise.delay(100000000);
 }
 
 /**
@@ -565,11 +606,14 @@ function createUnsavedDataObject(objectType, params = {}) {
 	return obj;
 }
 
-var createDataObject = Zotero.Promise.coroutine(function* (objectType, params = {}, saveOptions) {
+async function createDataObject(objectType, params = {}, saveOptions) {
 	var obj = createUnsavedDataObject(objectType, params);
-	yield obj.saveTx(saveOptions);
+	var options = {
+		skipSelect: (objectType == 'item' || objectType == 'feedItem') ? false : true
+	};
+	await obj.saveTx(Object.assign(options, saveOptions));
 	return obj;
-});
+}
 
 function getNameProperty(objectType) {
 	return objectType == 'item' ? 'title' : 'name';

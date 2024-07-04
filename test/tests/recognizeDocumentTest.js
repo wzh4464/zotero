@@ -42,11 +42,7 @@ describe("Document Recognition", function() {
 			// Import the PDF
 			var testdir = getTestDataDirectory();
 			testdir.append("recognizePDF_test_DOI.pdf");
-			var collection = await createDataObject('collection');
-			var attachment = await Zotero.Attachments.importFromFile({
-				file: testdir,
-				collections: [collection.id]
-			});
+			var attachment = await Zotero.Attachments.importFromFile({ file: testdir });
 			
 			win.ZoteroPane.recognizeSelected();
 			
@@ -78,9 +74,7 @@ describe("Document Recognition", function() {
 			// Import the PDF
 			var testdir = getTestDataDirectory();
 			testdir.append("recognizePDF_test_arXiv.pdf");
-			var attachment = await Zotero.Attachments.importFromFile({
-				file: testdir
-			});
+			var attachment = await Zotero.Attachments.importFromFile({ file: testdir });
 			
 			// Recognize the PDF
 			win.ZoteroPane.recognizeSelected();
@@ -108,6 +102,7 @@ describe("Document Recognition", function() {
 			var testdir = getTestDataDirectory();
 			testdir.append("recognizePDF_test_arXiv.pdf");
 			var collection = await createDataObject('collection');
+			await select(win, collection);
 			var attachment = await Zotero.Attachments.importFromFile({
 				file: testdir,
 				collections: [collection.id]
@@ -139,6 +134,7 @@ describe("Document Recognition", function() {
 			testdir.append("recognizePDF_test_arXiv.pdf");
 			var group = await getGroup();
 			var collection = await createDataObject('collection', { libraryID: group.libraryID });
+			await select(win, collection);
 			var attachment = await Zotero.Attachments.importFromFile({
 				libraryID: group.libraryID,
 				file: testdir,
@@ -171,6 +167,7 @@ describe("Document Recognition", function() {
 			testdir.append("recognizePDF_test_ISBN.pdf");
 			var group = await getGroup();
 			var collection = await createDataObject('collection', { libraryID: group.libraryID });
+			await select(win, collection);
 			var attachment = await Zotero.Attachments.importFromFile({
 				libraryID: group.libraryID,
 				file: testdir,
@@ -202,6 +199,7 @@ describe("Document Recognition", function() {
 			testdir.append("recognizePDF_test_title.pdf");
 			var group = await getGroup();
 			var collection = await createDataObject('collection', { libraryID: group.libraryID });
+			await select(win, collection);
 			var attachment = await Zotero.Attachments.importFromFile({
 				libraryID: group.libraryID,
 				file: testdir,
@@ -311,18 +309,13 @@ describe("Document Recognition", function() {
 						itemType: 'book',
 						title: 'The Mania of the Nations on the Planet Mars: ISBN Database Edition',
 						ISBN: isbn,
-						attachments: [],
 						tags: []
 					}];
 				});
 
 			let testDir = getTestDataDirectory();
 			testDir.append('recognizeEPUB_test_ISBN.epub');
-			let collection = await createDataObject('collection');
-			let attachment = await Zotero.Attachments.importFromFile({
-				file: testDir,
-				collections: [collection.id]
-			});
+			let attachment = await Zotero.Attachments.importFromFile({ file: testDir });
 
 			win.ZoteroPane.recognizeSelected();
 
@@ -356,11 +349,7 @@ describe("Document Recognition", function() {
 		it("should recognize an EPUB without an ISBN and rename the file", async function () {
 			let testDir = getTestDataDirectory();
 			testDir.append('recognizeEPUB_test_DC.epub');
-			let collection = await createDataObject('collection');
-			let attachment = await Zotero.Attachments.importFromFile({
-				file: testDir,
-				collections: [collection.id]
-			});
+			let attachment = await Zotero.Attachments.importFromFile({ file: testDir });
 
 			win.ZoteroPane.recognizeSelected();
 
@@ -398,18 +387,13 @@ describe("Document Recognition", function() {
 						itemType: 'book',
 						title: 'The Mania of the Nations on the Planet Mars: Bad Metadata Edition',
 						ISBN: isbnWrong, // Wrong ISBN
-						attachments: [],
 						tags: []
 					}];
 				});
 
 			let testDir = getTestDataDirectory();
 			testDir.append('recognizeEPUB_test_ISBN.epub');
-			let collection = await createDataObject('collection');
-			await Zotero.Attachments.importFromFile({
-				file: testDir,
-				collections: [collection.id]
-			});
+			await Zotero.Attachments.importFromFile({ file: testDir });
 
 			win.ZoteroPane.recognizeSelected();
 
@@ -438,11 +422,7 @@ describe("Document Recognition", function() {
 
 			let testDir = getTestDataDirectory();
 			testDir.append('recognizeEPUB_test_ISBN.epub');
-			let collection = await createDataObject('collection');
-			let attachment = await Zotero.Attachments.importFromFile({
-				file: testDir,
-				collections: [collection.id]
-			});
+			let attachment = await Zotero.Attachments.importFromFile({ file: testDir });
 
 			win.ZoteroPane.recognizeSelected();
 
@@ -471,18 +451,13 @@ describe("Document Recognition", function() {
 						itemType: 'book',
 						title: 'Building the American Republic, Volume 1, Library Catalog Edition',
 						ISBN: isbn,
-						attachments: [],
 						tags: []
 					}];
 				});
 
 			let testDir = getTestDataDirectory();
 			testDir.append('recognizeEPUB_test_copyright_page.epub');
-			let collection = await createDataObject('collection');
-			await Zotero.Attachments.importFromFile({
-				file: testDir,
-				collections: [collection.id]
-			});
+			await Zotero.Attachments.importFromFile({ file: testDir });
 
 			win.ZoteroPane.recognizeSelected();
 
@@ -512,18 +487,13 @@ describe("Document Recognition", function() {
 						itemType: 'book',
 						title: 'Building the American Republic, Volume 1, Library Catalog Edition',
 						ISBN: isbn,
-						attachments: [],
 						tags: []
 					}];
 				});
 
 			let testDir = getTestDataDirectory();
 			testDir.append('recognizeEPUB_test_content.epub');
-			let collection = await createDataObject('collection');
-			await Zotero.Attachments.importFromFile({
-				file: testDir,
-				collections: [collection.id]
-			});
+			await Zotero.Attachments.importFromFile({ file: testDir });
 
 			win.ZoteroPane.recognizeSelected();
 
@@ -540,6 +510,105 @@ describe("Document Recognition", function() {
 			assert.lengthOf(modifiedIDs, 2);
 
 			translateStub.restore();
+		});
+	});
+
+	describe("canUnrecognize()", function () {
+		if (Zotero.automatedTest) this.skip(); // TODO: Mock services
+		
+		async function getRecognizedItem() {
+			let search;
+			let itemJSON = {
+				itemType: 'book',
+				title: 'The Mania of the Nations on the Planet Mars',
+				ISBN: '9780656173822',
+				tags: []
+			};
+			let translateStub = sinon.stub(Zotero.Translate.Search.prototype, 'translate')
+				.callsFake(async function () {
+					search = this.search;
+					return [itemJSON];
+				});
+
+			let testDir = getTestDataDirectory();
+			testDir.append('recognizeEPUB_test_ISBN.epub');
+			await Zotero.Attachments.importFromFile({
+				file: testDir,
+			});
+
+			win.ZoteroPane.recognizeSelected();
+
+			let addedIDs = await waitForItemEvent('add');
+			await waitForItemEvent('modify');
+
+			// Wait for status to show as complete
+			var progressWindow = getWindows("chrome://zotero/content/progressQueueDialog.xhtml")[0];
+			var completeStr = Zotero.getString("general.finished");
+			while (progressWindow.document.getElementById("label").value != completeStr) {
+				await Zotero.Promise.delay(20);
+			}
+
+			assert.isTrue(translateStub.calledOnce);
+			assert.ok(search);
+			assert.lengthOf(addedIDs, 1);
+			
+			translateStub.restore();
+			return Zotero.Items.get(addedIDs[0]);
+		}
+		
+		it("should return true for a recognized item with one attachment", async function () {
+			let item = await getRecognizedItem();
+			assert.equal(item.numAttachments(), 1);
+			assert.equal(item.numNotes(), 0);
+			assert.isTrue(Zotero.RecognizeDocument.canUnrecognize(item));
+		});
+
+		it("should return false for a recognized item with one trashed attachment", async function () {
+			let item = await getRecognizedItem();
+			assert.equal(item.numAttachments(), 1);
+			assert.equal(item.numNotes(), 0);
+			let attachment = Zotero.Items.get(item.getAttachments()[0]);
+			attachment.deleted = true;
+			await attachment.saveTx();
+			assert.equal(item.numAttachments(), 0);
+			assert.equal(item.numNotes(), 0);
+			assert.isFalse(Zotero.RecognizeDocument.canUnrecognize(item));
+		});
+
+		it("should return true for a recognized item with one attachment and a note", async function () {
+			let item = await getRecognizedItem();
+			
+			assert.equal(item.numAttachments(), 1);
+			
+			// Let's pretend this was adding during translation
+			let note = new Zotero.Item('note');
+			note.setNote('This is a note');
+			note.parentItemID = item.id;
+			await note.saveTx();
+			
+			assert.equal(item.numNotes(), 1);
+			
+			assert.isTrue(Zotero.RecognizeDocument.canUnrecognize(item));
+		});
+
+		it("should return false for a recognized item with one attachment and a modified note", async function () {
+			let item = await getRecognizedItem();
+
+			assert.equal(item.numAttachments(), 1);
+
+			// Let's pretend this was adding during translation
+			let note = new Zotero.Item('note');
+			note.setNote('This is a note');
+			note.parentItemID = item.id;
+			await note.saveTx();
+			
+			await Zotero.Promise.delay(1200);
+			note.setNote('This is a modified note');
+			await note.saveTx();
+
+			assert.equal(item.numNotes(), 1);
+
+			assert.isFalse(Zotero.RecognizeDocument.canUnrecognize(item));
 		});
 	});
 });
