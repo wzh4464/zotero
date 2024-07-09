@@ -40,11 +40,11 @@ var Zotero_Preferences = {
 		this.navigation = document.getElementById('prefs-navigation');
 		this.content = document.getElementById('prefs-content');
 		this.helpContainer = document.getElementById('prefs-help-container');
+		this.searchField = document.getElementById('prefs-search');
 
 		this.navigation.addEventListener('mouseover', event => this._handleNavigationMouseOver(event));
 		this.navigation.addEventListener('select', () => this._handleNavigationSelect());
-		document.getElementById('prefs-search').addEventListener('command',
-			event => this._search(event.target.value));
+		this.searchField.addEventListener('command', () => this._search(this.searchField.value));
 		
 		document.getElementById('prefs-subpane-back-button').addEventListener('command', () => {
 			let parent = this.panes.get(this.navigation.value).parent;
@@ -53,7 +53,7 @@ var Zotero_Preferences = {
 			}
 		});
 
-		document.getElementById('prefs-search').focus();
+		this.searchField.focus();
 		
 		Zotero.PreferencePanes.builtInPanes.forEach(pane => this._addPane(pane));
 		if (Zotero.PreferencePanes.pluginPanes.length) {
@@ -146,8 +146,15 @@ var Zotero_Preferences = {
 		let paneID = this.navigation.value;
 		if (paneID) {
 			let pane = this.panes.get(paneID);
-			document.getElementById('prefs-search').value = '';
+			this.searchField.value = '';
 			await this._search('');
+			
+			await this._loadPane(paneID);
+			if (this.navigation.value !== paneID) {
+				// User navigated away from this pane while it was loading
+				return;
+			}
+			
 			await this._showPane(paneID);
 			this.content.scrollTop = 0;
 
@@ -323,16 +330,14 @@ var Zotero_Preferences = {
 
 	/**
 	 * Display a pane's content, alongside any other panes already showing.
-	 * If the pane is not yet loaded, it will be loaded first.
-	 *
+	 * Pane must be loaded (#_loadPane()).
 	 * @param {String} id
-	 * @return {Promise<void>}
 	 */
-	async _showPane(id) {
-		await this._loadPane(id);
-
+	_showPane(id) {
 		let pane = this.panes.get(id);
-
+		if (!pane.loaded) {
+			throw new Error(`Pane '${id}' not loaded`);
+		}
 		pane.container.hidden = false;
 		for (let child of pane.container.children) {
 			let event = new Event('showing');
@@ -629,6 +634,7 @@ ${str}
 				pane.container.hidden = true;
 			}
 			else {
+				await this._loadPane(id);
 				await this._showPane(id);
 			}
 		}
