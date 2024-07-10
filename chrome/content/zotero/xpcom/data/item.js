@@ -2488,12 +2488,17 @@ Zotero.Item.prototype.numNonHTMLFileAttachments = function () {
 };
 
 
-Zotero.Item.prototype.numPDFAttachments = function () {
+Zotero.Item.prototype.numFileAttachmentsWithContentType = function (contentType) {
 	this._requireData('childItems');
 	return this.getAttachments()
 		.map(itemID => Zotero.Items.get(itemID))
-		.filter(item => item.isFileAttachment() && item.attachmentContentType == 'application/pdf')
+		.filter(item => item.isFileAttachment() && item.attachmentContentType == contentType)
 		.length;
+};
+
+
+Zotero.Item.prototype.numPDFAttachments = function () {
+	return this.numFileAttachmentsWithContentType('application/pdf');
 };
 
 
@@ -3858,6 +3863,40 @@ Zotero.Item.prototype.clearBestAttachmentState = function () {
 }
 
 
+Zotero.Item.prototype._getDefaultTitleForAttachmentContentType = function () {
+	switch (this.attachmentContentType) {
+		case 'application/pdf':
+			return Zotero.getString('fileTypes.pdf');
+		case 'application/epub+zip':
+			return Zotero.getString('fileTypes.ebook');
+		case 'text/html':
+			return Zotero.getString('fileTypes.webpage');
+		default:
+			return null;
+	}
+};
+
+
+Zotero.Item.prototype.setFirstAttachmentTitle = function () {
+	if (!this.isAttachment()) {
+		throw new Error("setFirstAttachmentTitle() can only be called on attachment items");
+	}
+	if (!this.isFileAttachment() || !this.parentItemID) {
+		return;
+	}
+	let isFirstOfType = this.parentItem.numFileAttachmentsWithContentType(this.attachmentContentType) <= 1;
+	if (!isFirstOfType) {
+		return;
+	}
+	let defaultTitle = this._getDefaultTitleForAttachmentContentType();
+	if (defaultTitle === null) {
+		// Keep existing title
+		return;
+	}
+	this.setField('title', defaultTitle);
+};
+
+
 ////////////////////////////////////////////////////////
 //
 //
@@ -4261,11 +4300,21 @@ Zotero.Item.prototype.removeAllTags = function() {
 /**
  * Gets the collections the item is in
  *
+ * @param {Boolean} includeTrashed Include trashed collections
  * @return {Array<Integer>}  An array of collectionIDs for all collections the item belongs to
  */
-Zotero.Item.prototype.getCollections = function () {
+Zotero.Item.prototype.getCollections = function (includeTrashed) {
 	this._requireData('collections');
-	return this._collections.concat();
+	if (includeTrashed) {
+		return this._collections.concat();
+	}
+	return this._collections.filter((id) => {
+		var col = Zotero.Collections.get(id);
+		if (!col) {
+			throw new Error("Collection " + id + " not found for item " + this.libraryKey);
+		}
+		return !col.deleted;
+	});
 };
 
 

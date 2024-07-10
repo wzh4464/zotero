@@ -131,7 +131,7 @@ describe("ZoteroPane", function() {
 			// Unselected, with no items in view
 			assert.equal(
 				doc.getElementById('zotero-item-pane-message-box').textContent,
-				Zotero.getString('pane.item.unselected.zero', 0)
+				yield doc.l10n.formatValue('item-pane-message-unselected', { count: 0 })
 			);
 			
 			// Unselected, with one item in view
@@ -142,7 +142,7 @@ describe("ZoteroPane", function() {
 			});
 			assert.equal(
 				doc.getElementById('zotero-item-pane-message-box').textContent,
-				Zotero.getString('pane.item.unselected.singular', 1)
+				yield doc.l10n.formatValue('item-pane-message-unselected', { count: 1 })
 			);
 			
 			// Unselected, with multiple items in view
@@ -153,7 +153,7 @@ describe("ZoteroPane", function() {
 			});
 			assert.equal(
 				doc.getElementById('zotero-item-pane-message-box').textContent,
-				Zotero.getString('pane.item.unselected.plural', 2)
+				yield doc.l10n.formatValue('item-pane-message-unselected', { count: 2 })
 			);
 			
 			// Multiple items selected
@@ -591,7 +591,7 @@ describe("ZoteroPane", function() {
 			});
 			await zp.selectItem(attachment.id);
 			
-			await assert.eventually.isTrue(zp.renameSelectedAttachmentsFromParents());
+			await zp.renameSelectedAttachmentsFromParents();
 			assert.equal(attachment.attachmentFilename, newFilename);
 			var path = await attachment.getFilePathAsync();
 			assert.equal(OS.Path.basename(path), newFilename)
@@ -620,7 +620,7 @@ describe("ZoteroPane", function() {
 			});
 			await zp.selectItem(attachment.id);
 			
-			await assert.eventually.isTrue(zp.renameSelectedAttachmentsFromParents());
+			await zp.renameSelectedAttachmentsFromParents();
 			assert.equal(attachment.attachmentFilename, uniqueFilename);
 			var path = await attachment.getFilePathAsync();
 			assert.equal(OS.Path.basename(path), uniqueFilename)
@@ -649,7 +649,7 @@ describe("ZoteroPane", function() {
 			});
 			await zp.selectItem(attachment.id);
 			
-			await assert.eventually.isTrue(zp.renameSelectedAttachmentsFromParents());
+			await zp.renameSelectedAttachmentsFromParents();
 			assert.equal(attachment.attachmentFilename, uniqueFilename);
 			var path = await attachment.getFilePathAsync();
 			assert.equal(OS.Path.basename(path), uniqueFilename)
@@ -666,7 +666,7 @@ describe("ZoteroPane", function() {
 			await attachment.saveTx();
 			await zp.selectItem(attachment.id);
 			
-			assert.isTrue(await zp.renameSelectedAttachmentsFromParents());
+			await zp.renameSelectedAttachmentsFromParents();
 			assert.equal(attachment.attachmentFilename, 'Title.png');
 			assert.equal(attachment.getField('title'), 'Image')
 		});
@@ -681,7 +681,7 @@ describe("ZoteroPane", function() {
 			await attachment.saveTx();
 			await zp.selectItem(attachment.id);
 			
-			assert.isTrue(await zp.renameSelectedAttachmentsFromParents());
+			await zp.renameSelectedAttachmentsFromParents();
 			assert.equal(attachment.attachmentFilename, 'Title.png');
 			assert.equal(attachment.getField('title'), 'Title.png')
 		});
@@ -696,7 +696,7 @@ describe("ZoteroPane", function() {
 			await attachment.saveTx();
 			await zp.selectItem(attachment.id);
 			
-			assert.isTrue(await zp.renameSelectedAttachmentsFromParents());
+			await zp.renameSelectedAttachmentsFromParents();
 			assert.equal(attachment.attachmentFilename, 'Title.png');
 			assert.equal(attachment.getField('title'), 'Title.png')
 		});
@@ -1647,6 +1647,37 @@ describe("ZoteroPane", function() {
 			assert.equal(doc.activeElement.id, "zotero-tb-lookup");
 			doc.activeElement.dispatchEvent(leftArrow);
 			assert.equal(doc.activeElement.id, "zotero-tb-add");
+		});
+	});
+	
+	describe("#addAttachmentFromDialog()", function () {
+		it("should set an automatic title on the first file attachment of each supported type", async function () {
+			let parentItem = await createDataObject('item');
+			
+			// Add a link attachment, which won't affect renaming
+			await Zotero.Attachments.linkFromURL({
+				url: 'https://example.com/',
+				parentItemID: parentItem.id,
+			});
+			
+			// Add a PDF attachment, which will be renamed
+			let file = getTestDataDirectory();
+			file.append('test.pdf');
+			let [pdfAttachment1] = await zp.addAttachmentFromDialog(false, parentItem.id, [file.path]);
+			assert.equal(parentItem.getAttachments().length, 2);
+			assert.equal(pdfAttachment1.getField('title'), Zotero.getString('fileTypes.pdf'));
+			
+			// Add a second, which won't
+			let [pdfAttachment2] = await zp.addAttachmentFromDialog(false, parentItem.id, [file.path]);
+			assert.equal(parentItem.getAttachments().length, 3);
+			assert.equal(pdfAttachment2.getField('title'), 'test.pdf');
+			
+			// Add an EPUB attachment, which will be renamed
+			file = getTestDataDirectory();
+			file.append('stub.epub');
+			let [epubAttachment] = await zp.addAttachmentFromDialog(false, parentItem.id, [file.path]);
+			assert.equal(parentItem.getAttachments().length, 4);
+			assert.equal(epubAttachment.getField('title'), Zotero.getString('fileTypes.ebook'));
 		});
 	});
 })
