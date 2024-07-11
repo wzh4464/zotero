@@ -30,7 +30,6 @@ Components.utils.import("resource://zotero/config.js");
 var React = require('react');
 var ReactDOM = require('react-dom');
 var VirtualizedTable = require('components/virtualized-table');
-var { getDOMElement } = require('components/icons');
 var { renderCell } = VirtualizedTable;
 
 Zotero_Preferences.Sync = {
@@ -315,22 +314,25 @@ Zotero_Preferences.Sync = {
 				return false;
 			}
 		};
-		let elem = (
-			<VirtualizedTable
-				getRowCount={() => this._rows.length}
-				id="librariesToSync-table"
-				ref={ref => this._tree = ref}
-				renderItem={renderItem}
-				showHeader={true}
-				columns={columns}
-				staticColumns={true}
-				getRowString={index => this._rows[index].name}
-				disableFontSizeScaling={true}
-				onKeyDown={handleKeyDown}
-			/>
-		);
-		
-		ReactDOM.render(elem, document.getElementById("libraries-to-sync-tree"));
+		await new Promise((resolve) => {
+			ReactDOM.createRoot(document.getElementById("libraries-to-sync-tree")).render(
+				<VirtualizedTable
+					getRowCount={() => this._rows.length}
+					id="librariesToSync-table"
+					ref={(ref) => {
+						this._tree = ref;
+						resolve();
+					}}
+					renderItem={renderItem}
+					showHeader={true}
+					columns={columns}
+					staticColumns={true}
+					getRowString={index => this._rows[index].name}
+					disableFontSizeScaling={true}
+					onKeyDown={handleKeyDown}
+				/>
+			);
+		});
 		
 		var addRow = function (libraryName, id, checked=false, editable=true) {
 			this._rows.push({

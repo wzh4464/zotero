@@ -73,7 +73,8 @@ var Zotero_Tabs = new function () {
 	this._tabs = [{
 		id: 'zotero-pane',
 		type: 'library',
-		title: ''
+		title: '',
+		data: {}
 	}];
 	this._selectedID = 'zotero-pane';
 	this._prevSelectedID = null;
@@ -93,33 +94,41 @@ var Zotero_Tabs = new function () {
 	};
 
 	this._update = function () {
-		this._tabBarRef.current.setTabs(this._tabs.map((tab) => {
-			let icon = null;
+		// Go through all tabs and try to save their icons to tab.data
+		for (let tab of this._tabs) {
+			// If the icon was earlier cached, skip this tab
+			if (tab.data.icon) continue;
+
+			// Find the icon for the library tab
 			if (tab.id === 'zotero-pane') {
 				let index = ZoteroPane.collectionsView?.selection?.focused;
 				if (typeof index !== 'undefined' && ZoteroPane.collectionsView.getRow(index)) {
 					let iconName = ZoteroPane.collectionsView.getIconName(index);
-					icon = { isItemType: false, icon: iconName };
+					tab.data.icon = iconName;
 				}
 			}
-			else if (tab.data?.itemID) {
+			else {
+				// Try to fetch the icon for the reader tab
 				try {
 					let item = Zotero.Items.get(tab.data.itemID);
-					icon = { isItemType: true, icon: item.getItemTypeIconName(true) };
+					tab.data.icon = item.getItemTypeIconName(true);
 				}
 				catch (e) {
 					// item might not yet be loaded, we will get the right icon on the next update
 					// but until then use a default placeholder
-					icon = { isItemType: true, icon: null };
+					tab.data.icon = null;
 				}
 			}
+		}
 
+		this._tabBarRef.current.setTabs(this._tabs.map((tab) => {
 			return {
 				id: tab.id,
 				type: tab.type,
 				title: tab.title,
 				selected: tab.id == this._selectedID,
-				...icon,
+				isItemType: tab.id !== 'zotero-pane',
+				icon: tab.data?.icon || null
 			};
 		}));
 		// Disable File > Close menuitem if multiple tabs are open
@@ -156,7 +165,7 @@ var Zotero_Tabs = new function () {
 	};
 
 	this.init = function () {
-		ReactDOM.render(
+		ReactDOM.createRoot(document.getElementById('tab-bar-container')).render(
 			<TabBar
 				ref={this._tabBarRef}
 				onTabSelect={this.select.bind(this)}
@@ -164,11 +173,8 @@ var Zotero_Tabs = new function () {
 				onTabClose={this.close.bind(this)}
 				onContextMenu={this._openMenu.bind(this)}
 				refocusReader={this.refocusReader.bind(this)}
-			/>,
-			document.getElementById('tab-bar-container'),
-			() => {
-				this._update();
-			}
+				onLoad={this._update.bind(this)}
+			/>
 		);
 	};
 
@@ -198,6 +204,9 @@ var Zotero_Tabs = new function () {
 			let tab = tabs[i];
 			if (tab.type === 'library') {
 				this.rename('zotero-pane', tab.title);
+				// At first, library tab is added without the icon data. We set it here once we know what it is
+				let libraryTab = this._getTab('zotero-pane');
+				libraryTab.tab.data = tab.data || {};
 			}
 			else if (tab.type === 'reader') {
 				if (Zotero.Items.exists(tab.data.itemID)) {
@@ -587,8 +596,8 @@ var Zotero_Tabs = new function () {
 
 	/**
 	 * Moves focus to a tab in the specified direction.
-	 * @param {String} direction. "first", "last", "left", "right", or "current"
-	 * If document.activeElement is a tab, "left" or "right" direction moves focus from that tab.
+	 * @param {String} direction. "first", "last", "previous", "next", or "current"
+	 * If document.activeElement is a tab, "previous" or "next" direction moves focus from that tab.
 	 * Otherwise, focus is moved in the given direction from the currently selected tab.
 	 */
 	this.moveFocus = function (direction) {
@@ -615,10 +624,10 @@ var Zotero_Tabs = new function () {
 			}
 	
 			switch (direction) {
-				case "left":
+				case "previous":
 					tabIndexToFocus = focusedTabIndex > 0 ? focusedTabIndex - 1 : null;
 					break;
-				case "right":
+				case "next":
 					tabIndexToFocus = focusedTabIndex < this._tabs.length - 1 ? focusedTabIndex + 1 : null;
 					break;
 				default:

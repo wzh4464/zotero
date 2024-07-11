@@ -30,7 +30,7 @@ const PropTypes = require('prop-types');
 const cx = require('classnames');
 const WindowedList = require('./windowed-list');
 const Draggable = require('./draggable');
-const { CSSIcon, getDOMElement } = require('components/icons');
+const { CSSIcon, getCSSIcon } = require('components/icons');
 const { Zotero_Tooltip } = require('./tooltip');
 
 const TYPING_TIMEOUT = 1000;
@@ -630,7 +630,7 @@ class VirtualizedTable extends React.Component {
 		if (shiftSelect || moveFocused) return;
 		
 		switch (e.key) {
-		case "ArrowLeft":
+		case Zotero.arrowPreviousKey:
 			const parentIndex = this.props.getParentIndex(this.selection.focused);
 			if (this.props.isContainer(this.selection.focused)
 					&& !this.props.isContainerEmpty(this.selection.focused)
@@ -642,7 +642,7 @@ class VirtualizedTable extends React.Component {
 			}
 			break;
 
-		case "ArrowRight":
+		case Zotero.arrowNextKey:
 			if (this.props.isContainer(this.selection.focused)
 					&& !this.props.isContainerEmpty(this.selection.focused)) {
 				if (!this.props.isContainerOpen(this.selection.focused)) {
@@ -1751,7 +1751,7 @@ function renderCheckboxCell(index, data, column, dir = null) {
 	span.setAttribute('role', 'checkbox');
 	span.setAttribute('aria-checked', data);
 	if (data) {
-		span.appendChild(getDOMElement('IconTick'));
+		span.appendChild(getCSSIcon('IconTick'));
 	}
 	return span;
 }

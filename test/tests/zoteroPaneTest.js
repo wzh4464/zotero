@@ -671,7 +671,7 @@ describe("ZoteroPane", function() {
 			assert.equal(attachment.getField('title'), 'Image')
 		});
 		
-		it("should change attachment title if the same as filename", async function () {
+		it("should not change attachment title even if the same as filename", async function () {
 			var item = createUnsavedDataObject('item');
 			item.setField('title', 'Title');
 			await item.saveTx();
@@ -683,22 +683,7 @@ describe("ZoteroPane", function() {
 			
 			await zp.renameSelectedAttachmentsFromParents();
 			assert.equal(attachment.attachmentFilename, 'Title.png');
-			assert.equal(attachment.getField('title'), 'Title.png')
-		});
-		
-		it("should change attachment title if the same as filename without extension", async function () {
-			var item = createUnsavedDataObject('item');
-			item.setField('title', 'Title');
-			await item.saveTx();
-			
-			var attachment = await importFileAttachment('test.png', { parentItemID: item.id });
-			attachment.setField('title', 'test');
-			await attachment.saveTx();
-			await zp.selectItem(attachment.id);
-			
-			await zp.renameSelectedAttachmentsFromParents();
-			assert.equal(attachment.attachmentFilename, 'Title.png');
-			assert.equal(attachment.getField('title'), 'Title.png')
+			assert.equal(attachment.getField('title'), 'test.png')
 		});
 	});
 	
@@ -1660,19 +1645,19 @@ describe("ZoteroPane", function() {
 				parentItemID: parentItem.id,
 			});
 			
-			// Add a PDF attachment, which will be renamed
+			// Add a PDF attachment, which will get a default title
 			let file = getTestDataDirectory();
 			file.append('test.pdf');
 			let [pdfAttachment1] = await zp.addAttachmentFromDialog(false, parentItem.id, [file.path]);
 			assert.equal(parentItem.getAttachments().length, 2);
 			assert.equal(pdfAttachment1.getField('title'), Zotero.getString('fileTypes.pdf'));
 			
-			// Add a second, which won't
+			// Add a second, which will get a title based on its filename
 			let [pdfAttachment2] = await zp.addAttachmentFromDialog(false, parentItem.id, [file.path]);
 			assert.equal(parentItem.getAttachments().length, 3);
-			assert.equal(pdfAttachment2.getField('title'), 'test.pdf');
+			assert.equal(pdfAttachment2.getField('title'), 'test');
 			
-			// Add an EPUB attachment, which will be renamed
+			// Add an EPUB attachment, which will get a default title
 			file = getTestDataDirectory();
 			file.append('stub.epub');
 			let [epubAttachment] = await zp.addAttachmentFromDialog(false, parentItem.id, [file.path]);
