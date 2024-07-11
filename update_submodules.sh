@@ -14,8 +14,11 @@ echo "正在拉取主仓库的最新更改..."
 git pull origin $current_branch
 
 # 查找所有子模块的 .git 目录
-echo "正在查找所有子模块的 .git 目录..."
-submodule_dirs=$(find . -type d -name ".git" | grep -v "^./.git$")
+echo "正在查找所有子模块的 .git 目录..., recursively"
+submodule_dirs=$(find . -name ".git" )
+
+echo "找到以下子模块："
+echo "$submodule_dirs"
 
 for submodule_git_dir in $submodule_dirs; do
   submodule_dir=$(dirname "$submodule_git_dir")
@@ -47,7 +50,9 @@ done
 # 合并 upstream/main 到当前分支
 echo "正在合并主仓库的 upstream/main 到 $current_branch..."
 git fetch upstream
-git merge upstream/main
+# git merge upstream/main
+# merge without interaction, commit message will be auto generated
+git merge upstream/main --no-edit
 
 echo "所有操作完成。"
 
