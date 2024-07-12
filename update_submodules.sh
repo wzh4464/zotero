@@ -32,17 +32,8 @@ for submodule_git_dir in $submodule_dirs; do
   else
     echo "正在拉取子模块 $submodule_dir 的最新更改..."
     git pull
-
-    # 检查是否有 upstream 远程仓库
-    if git remote | grep -q upstream; then
-      # 合并 upstream/main 到当前分支
-      echo "正在合并 upstream/main 到 $submodule_branch..."
-      git fetch upstream
-      git merge upstream/main
-    else
-      echo "子模块 $submodule_dir 没有 upstream 远程仓库，跳过合并..."
-    fi
   fi
+  # fi
 
   cd - > /dev/null
 done
