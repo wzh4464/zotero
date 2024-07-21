@@ -3881,13 +3881,14 @@ Zotero.Item.prototype.setAutoAttachmentTitle = function () {
 	if (!this.isAttachment()) {
 		throw new Error("setAutoAttachmentTitle() can only be called on attachment items");
 	}
-	if (!this.isFileAttachment() || !this.parentItemID) {
+	if (!this.isFileAttachment()) {
 		return;
 	}
 	
 	// If this is the only attachment of its type on the parent item, give it
 	// a default title ("PDF", "Webpage", etc.)
-	let isFirstOfType = this.parentItem.numFileAttachmentsWithContentType(this.attachmentContentType) <= 1;
+	let isFirstOfType = this.parentItemID
+		&& this.parentItem.numFileAttachmentsWithContentType(this.attachmentContentType) <= 1;
 	if (isFirstOfType) {
 		let defaultTitle = this._getDefaultTitleForAttachmentContentType();
 		if (defaultTitle !== null) {
@@ -3946,8 +3947,10 @@ for (let name of ['type', 'authorName', 'text', 'comment', 'color', 'pageLabel',
 			switch (name) {
 				case 'type': {
 					let currentType = this._getLatestField('annotationType');
-					if (currentType && currentType != value) {
-						throw new Error("Cannot change annotation type");
+					if (currentType && currentType != value
+						&& (!['highlight', 'underline'].includes(value)
+							|| !['highlight', 'underline'].includes(currentType))) {
+						throw new Error("Only changes between highlight and underline annotation types are permitted");
 					}
 					if (!['highlight', 'underline', 'note', 'text', 'image', 'ink'].includes(value)) {
 						let e = new Error(`Unknown annotation type '${value}'`);
@@ -4534,32 +4537,19 @@ Zotero.Item.prototype.getItemTypeIconName = function (skipLinkMode = false) {
 };
 
 
-Zotero.Item.prototype.getTagColors = function () {
-	Zotero.warn("Zotero.Item::getTagColors() is deprecated -- use Zotero.Item::getColoredTags()");
-	return this.getColoredTags().map(x => x.color);
-};
-
-
 /**
- * Return tags and colors
+ * Return tags with assigned colors and tags that contain emojis
  *
  * @return {Object[]} - Array of object with 'tag' and 'color' properties
  */
-Zotero.Item.prototype.getColoredTags = function () {
+Zotero.Item.prototype.getItemsListTags = function () {
 	var tags = this.getTags();
 	if (!tags.length) return [];
-	
-	let colorData = [];
 	let tagColors = Zotero.Tags.getColors(this.libraryID);
-	for (let tag of tags) {
-		let data = tagColors.get(tag.tag);
-		if (data) {
-			colorData.push({tag: tag.tag, ...data});
-		}
-	}
-	return colorData.sort((a, b) => a.position - b.position).map(x => ({ tag: x.tag, color: x.color }));
+	let colorOrEmojiTags = tags.filter(tag => tagColors.get(tag.tag) || Zotero.Utilities.Internal.containsEmoji(tag.tag));
+	colorOrEmojiTags.sort((a, b) => Zotero.Tags.compareTagsOrder(this.libraryID, a.tag, b.tag));
+	return colorOrEmojiTags.map(x => ({ tag: x.tag, color: tagColors.get(x.tag)?.color || null }));
 };
-
 
 /**
  * Compares this item to another

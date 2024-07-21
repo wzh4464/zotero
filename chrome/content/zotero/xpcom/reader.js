@@ -200,6 +200,7 @@ class ReaderInstance {
 				...Zotero.Intl.getPrefixedStrings('pdfReader.')
 			},
 			showAnnotations: true,
+			textSelectionAnnotationMode: Zotero.Prefs.get('reader.textSelectionAnnotationMode'),
 			useDarkModeForContent: Zotero.Prefs.get('reader.contentDarkMode'),
 			fontFamily: Zotero.Prefs.get('reader.ebookFontFamily'),
 			hyphenation: Zotero.Prefs.get('reader.ebookHyphenate'),
@@ -496,7 +497,7 @@ class ReaderInstance {
 				}
 			},
 			onToggleContextPane: () => {
-				Zotero.debug('toggle context pane')
+				Zotero.debug('toggle context pane');
 				let win = Zotero.getMainWindow();
 				win.ZoteroContextPane.togglePane();
 			},
@@ -518,6 +519,21 @@ class ReaderInstance {
 				iframe.browsingContext.textZoom = 1;
 				iframe.browsingContext.fullZoom = zoom;
 			},
+			onTextSelectionAnnotationModeChange: (mode) => {
+				Zotero.Prefs.set('reader.textSelectionAnnotationMode', mode);
+			},
+			onBringReaderToFront: (bring) => {
+				// Temporary bring reader iframe to front to make sure popups and context menus
+				// aren't overlapped by contextPane, in Stacked View mode
+				if (bring) {
+					if (Zotero.Prefs.get('layout') === 'stacked') {
+						this._iframe.parentElement.style.zIndex = 1;
+					}
+				}
+				else {
+					this._iframe.parentElement.style.zIndex = 'unset';
+				}
+			}
 		}, this._iframeWindow, { cloneFunctions: true }));
 
 		this._resolveInitPromise();
@@ -527,6 +543,7 @@ class ReaderInstance {
 		this._prefObserverIDs = [
 			Zotero.Prefs.registerObserver('fontSize', this._handleFontSizeChange),
 			Zotero.Prefs.registerObserver('tabs.title.reader', this._handleTabTitlePrefChange),
+			Zotero.Prefs.registerObserver('reader.textSelectionAnnotationMode', this._handleTextSelectionAnnotationModeChange),
 			Zotero.Prefs.registerObserver('reader.contentDarkMode', this._handleContentDarkModeChange),
 			Zotero.Prefs.registerObserver('reader.ebookFontFamily', this._handleEbookPrefChange),
 			Zotero.Prefs.registerObserver('reader.ebookHyphenate', this._handleEbookPrefChange),
@@ -856,6 +873,10 @@ class ReaderInstance {
 		await this.updateTitle();
 	};
 
+	_handleTextSelectionAnnotationModeChange = () => {
+		this._internalReader.setTextSelectionAnnotationMode(Zotero.Prefs.get('reader.textSelectionAnnotationMode'));
+	};
+
 	_handleContentDarkModeChange = () => {
 		this._internalReader.useDarkModeForContent(Zotero.Prefs.get('reader.contentDarkMode'));
 	};
@@ -887,30 +908,59 @@ class ReaderInstance {
 	}
 
 	_openTagsPopup(item, x, y) {
-		let menupopup = this._window.document.createXULElement('menupopup');
-		menupopup.addEventListener('popuphidden', function (event) {
-			if (event.target === menupopup) {
-				menupopup.remove();
+		let tagsPopup = this._window.document.createXULElement('panel');
+		// <panel> completely takes over Escape keydown event, by attaching a capturing keydown
+		// listener to document which just closes the popup. It leads to unwanted edits being saved.
+		// Attach our own listener to this._window.document to properly handle Escape on edited tags
+		let handleKeyDown = (event) => {
+			if (event.key !== "Escape") return;
+			let focusedTag = tagsPopup.querySelector("editable-text.focused");
+			if (focusedTag) {
+				if (focusedTag.closest("[isNew]")) {
+					// remove newly added tag
+					focusedTag.closest(".row").remove();
+				}
+				else {
+					// or reset to initial value if the tag is not new
+					focusedTag.value = focusedTag.initialValue;
+				}
 			}
+			// now that all tags values are reset, close the popup
+			tagsPopup.hidePopup();
+		};
+		tagsPopup.addEventListener('popuphidden', (event) => {
+			if (event.target === tagsPopup) {
+				tagsPopup.remove();
+			}
+			this._window.document.removeEventListener("keydown", handleKeyDown, true);
 		});
-		menupopup.className = 'tags-popup';
-		menupopup.setAttribute('ignorekeys', true);
+		this._window.document.addEventListener("keydown", handleKeyDown, true);
+		tagsPopup.className = 'tags-popup';
 		let tagsbox = this._window.document.createXULElement('tags-box');
-		menupopup.appendChild(tagsbox);
+		tagsPopup.appendChild(tagsbox);
 		tagsbox.setAttribute('flex', '1');
-		this._popupset.appendChild(menupopup);
+		this._popupset.appendChild(tagsPopup);
 		let rect = this._iframe.getBoundingClientRect();
 		x += rect.left;
 		y += rect.top;
 		tagsbox.editable = true;
 		tagsbox.item = item;
 		tagsbox.render();
-		menupopup.openPopup(null, 'before_start', x, y, true);
-		setTimeout(() => {
+		// remove unnecessary tabstop from the section header
+		tagsbox.querySelector(".head").removeAttribute("tabindex");
+		tagsPopup.addEventListener("popupshown", (_) => {
+			// Ensure tagsbox is open
+			tagsbox.open = true;
 			if (tagsbox.count == 0) {
 				tagsbox.newTag();
 			}
+			else {
+				// Focus + button
+				Services.focus.setFocus(tagsbox.querySelector("toolbarbutton"), Services.focus.FLAG_NOSHOWRING);
+			}
+			tagsbox.collapsible = false;
 		});
+		tagsPopup.openPopup(null, 'before_start', x, y, true);
 	}
 
 	async _openContextMenu({ x, y, itemGroups }) {
@@ -1046,6 +1096,7 @@ class ReaderTab extends ReaderInstance {
 		this._iframe.setAttribute('class', 'reader');
 		this._iframe.setAttribute('flex', '1');
 		this._iframe.setAttribute('type', 'content');
+		this._iframe.setAttribute('transparent', 'true');
 		this._iframe.setAttribute('src', 'resource://zotero/reader/reader.html');
 		this._tabContainer.appendChild(this._iframe);
 		this._iframe.docShell.windowDraggingAllowed = true;
@@ -1749,8 +1800,7 @@ class Reader {
 		let { libraryID } = Zotero.Items.getLibraryAndKeyFromID(itemID);
 		let library = Zotero.Libraries.get(libraryID);
 		let win = Zotero.getMainWindow();
-		// Change tab's type from "unloaded-reader" to "reader"
-		win.Zotero_Tabs.markAsLoaded(tabID);
+
 		await library.waitForDataLoad('item');
 
 		let item = Zotero.Items.get(itemID);
@@ -1834,6 +1884,8 @@ class Reader {
 				}
 			});
 			this._readers.push(reader);
+			// Change tab's type from "reader-unloaded" to "reader" after reader loaded
+			win.Zotero_Tabs.markAsLoaded(tabID);
 		}
 		
 		if (!openInBackground

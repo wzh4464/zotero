@@ -96,9 +96,6 @@ var Zotero_Tabs = new function () {
 	this._update = function () {
 		// Go through all tabs and try to save their icons to tab.data
 		for (let tab of this._tabs) {
-			// If the icon was earlier cached, skip this tab
-			if (tab.data.icon) continue;
-
 			// Find the icon for the library tab
 			if (tab.id === 'zotero-pane') {
 				let index = ZoteroPane.collectionsView?.selection?.focused;
@@ -107,7 +104,7 @@ var Zotero_Tabs = new function () {
 					tab.data.icon = iconName;
 				}
 			}
-			else {
+			else if (!tab.data.icon) {
 				// Try to fetch the icon for the reader tab
 				try {
 					let item = Zotero.Items.get(tab.data.itemID);
@@ -115,8 +112,6 @@ var Zotero_Tabs = new function () {
 				}
 				catch (e) {
 					// item might not yet be loaded, we will get the right icon on the next update
-					// but until then use a default placeholder
-					tab.data.icon = null;
 				}
 			}
 		}
@@ -461,6 +456,7 @@ var Zotero_Tabs = new function () {
 			selectedTab.lastFocusedElement = document.activeElement;
 		}
 		if (tab.type === 'reader-unloaded') {
+			tab.type = "reader-loading";
 			// Make sure the loading message is displayed first.
 			// Then, open reader and hide the loading message once it has loaded.
 			ZoteroContextPane.showLoadingMessage(true);
@@ -498,24 +494,6 @@ var Zotero_Tabs = new function () {
 				tabNode.focus();
 			}
 		}
-		// Allow React to create a tab node
-		setTimeout(() => {
-			tabNode.scrollIntoView({ behavior: 'smooth' });
-		});
-		// Border is not included when scrolling element node into view, therefore we do it manually.
-		// TODO: `scroll-padding` since Firefox 68 can probably be used instead
-		setTimeout(() => {
-			if (!tabNode) {
-				return;
-			}
-			let tabsContainerNode = document.querySelector('#tab-bar-container .tabs');
-			if (tabNode.offsetLeft + tabNode.offsetWidth - tabsContainerNode.offsetWidth + 1 >= tabsContainerNode.scrollLeft) {
-				document.querySelector('#tab-bar-container .tabs').scrollLeft += 1;
-			}
-			else if (tabNode.offsetLeft - 1 <= tabsContainerNode.scrollLeft) {
-				document.querySelector('#tab-bar-container .tabs').scrollLeft -= 1;
-			}
-		}, 500);
 		tab.timeSelected = Zotero.Date.getUnixTimestamp();
 		// Without `setTimeout` the tab closing that happens in `unloadUnusedTabs` results in
 		// tabs deck selection index bigger than the deck children count. It feels like something
@@ -541,8 +519,10 @@ var Zotero_Tabs = new function () {
 	// Mark a tab as loaded
 	this.markAsLoaded = function (id) {
 		let { tab } = this._getTab(id);
-		if (!tab) return;
+		if (!tab || tab.type == "reader") return;
+		let prevType = tab.type;
 		tab.type = "reader";
+		Zotero.Notifier.trigger("load", "tab", [id], { [id]: Object.assign({}, tab, { prevType }) }, true);
 	};
 
 	this.unloadUnusedTabs = function () {
@@ -592,7 +572,7 @@ var Zotero_Tabs = new function () {
 		setTimeout(() => {
 			reader.focus();
 		});
-	}
+	};
 
 	/**
 	 * Moves focus to a tab in the specified direction.
@@ -638,14 +618,12 @@ var Zotero_Tabs = new function () {
 		if (tabIndexToFocus !== null) {
 			const nextTab = this._tabs[tabIndexToFocus];
 			// There may be duplicate tabs - in normal tab array and in pinned tabs
-			// So to get the right one, fetch all tabs with a given id and filter out one
-			// that's visible
+			// Go through all candidates and try to focus the visible one
 			let candidates = document.querySelectorAll(`[data-id="${nextTab.id}"]`);
 			for (let node of candidates) {
-				if (node.offsetParent) {
-					node.focus();
-					return;
-				}
+				node.focus();
+				// Visible tab was found and focused
+				if (document.activeElement == node) return;
 			}
 		}
 	};

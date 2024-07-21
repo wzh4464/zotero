@@ -2498,8 +2498,6 @@ var ItemTree = class ItemTree extends LibraryTree {
 					}
 
 					if (item) {
-						item.setAutoAttachmentTitle();
-						await item.saveTx();
 						addedItems.push(item);
 					}
 				}
@@ -2803,15 +2801,14 @@ var ItemTree = class ItemTree extends LibraryTree {
 
 		let tagAriaLabel = '';
 		let tagSpans = [];
-		let coloredTags = item.getColoredTags();
+		let coloredTags = item.getItemsListTags();
 		if (coloredTags.length) {
 			let { emoji, colored } = coloredTags.reduce((acc, tag) => {
-				acc[Zotero.Utilities.Internal.isOnlyEmoji(tag.tag) ? 'emoji' : 'colored'].push(tag);
+				acc[Zotero.Utilities.Internal.containsEmoji(tag.tag) ? 'emoji' : 'colored'].push(tag);
 				return acc;
 			}, { emoji: [], colored: [] });
 			
-			tagSpans.push(...emoji.map(x => this._getTagSwatch(x.tag)));
-			
+			// Add colored tags first
 			if (colored.length) {
 				let coloredTagSpans = colored.map(x => this._getTagSwatch(x.tag, x.color));
 				let coloredTagSpanWrapper = document.createElement('span');
@@ -2819,6 +2816,9 @@ var ItemTree = class ItemTree extends LibraryTree {
 				coloredTagSpanWrapper.append(...coloredTagSpans);
 				tagSpans.push(coloredTagSpanWrapper);
 			}
+			
+			// Add emoji tags after
+			tagSpans.push(...emoji.map(x => this._getTagSwatch(x.tag)));
 
 			tagAriaLabel = coloredTags.length == 1 ? Zotero.getString('searchConditions.tag') : Zotero.getString('itemFields.tags');
 			tagAriaLabel += ' ' + coloredTags.map(x => x.tag).join(', ') + '.';
@@ -3121,8 +3121,6 @@ var ItemTree = class ItemTree extends LibraryTree {
 				this.tree.invalidateRow(this._rowMap[id]);
 			}
 		}
-		// Update aria-activedescendant on the tree
-		this.forceUpdate();
 		this.duplicateMouseSelection = false;
 		if (shouldDebounce) {
 			this._onSelectionChangeDebounced();
@@ -3866,12 +3864,13 @@ var ItemTree = class ItemTree extends LibraryTree {
 	_getTagSwatch(tag, color) {
 		let span = document.createElement('span');
 		span.className = 'tag-swatch';
-		// If only emoji, display directly
+		let extractedEmojis = Zotero.Tags.extractEmojiForItemsList(tag);
+		// If contains emojis, display directly
 		//
 		// TODO: Check for a maximum number of graphemes, which is hard to do
 		// https://stackoverflow.com/a/54369605
-		if (Zotero.Utilities.Internal.isOnlyEmoji(tag)) {
-			span.textContent = tag;
+		if (extractedEmojis) {
+			span.textContent = extractedEmojis;
 			span.className += ' emoji';
 		}
 		// Otherwise display color
