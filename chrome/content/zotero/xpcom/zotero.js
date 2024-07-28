@@ -1354,10 +1354,31 @@ Services.scriptloader.loadSubScript("resource://zotero/polyfill.js");
 	 * Get versions, platform, etc.
 	 */
 	this.getSystemInfo = async function () {
+		var version = Zotero.version + ' (';
+		
+		var arch = Zotero.arch;
+		if (arch == 'aarch64') {
+			arch = 'ARM64';
+		}
+		else if (arch == 'x86_64') {
+			arch = 'x64';
+		}
+		version += arch;
+		
+		if (Zotero.isWin) {
+			let info = await Services.sysinfo.processInfo;
+			if (info.isWowARM64) {
+				version += " on ARM64";
+			}
+			else if (info.isWow64) {
+				version += " on x64";
+			}
+		}
+		version += ')';
+		
 		var info = {
 			appName: Services.appinfo.name,
-			version: Zotero.version
-				+ (!Zotero.isMac && !Services.appinfo.is64Bit ? ' (32-bit)' : ''),
+			version,
 			os: await this.getOSVersion(),
 			locale: Zotero.locale,
 		};
@@ -1378,7 +1399,8 @@ Services.scriptloader.loadSubScript("resource://zotero/polyfill.js");
 	 * Return OS and OS version
 	 *
 	 * "macOS 13.3.1"
-	 * "Windows 10.0 22000"
+	 * "Windows 10.0 19043"
+	 * "Windows 11 22000"
 	 * "Linux 5.4.0-148-generic #165-Ubuntu SMP Tue Apr 18 08:53:12 UTC 2023"
 	 *
 	 * @return {String}
@@ -1393,9 +1415,18 @@ Services.scriptloader.loadSubScript("resource://zotero/polyfill.js");
 				Zotero.logError(e);
 			}
 		}
-		return (Zotero.isWin ? "Windows" : Services.sysinfo.getProperty("name"))
-			+ " " + Services.sysinfo.getProperty("version")
-			+ " " + Services.sysinfo.getProperty("build");
+		
+		var name = Services.sysinfo.getProperty("name");
+		var version = Services.sysinfo.getProperty("version");
+		var build = Services.sysinfo.getProperty("build");
+		if (Zotero.isWin) {
+			name = "Windows";
+			// Builds above 22000 are Windows 11
+			if (build >= 22000) {
+				version = 11;
+			}
+		}
+		return name + " " + version + " " + build;
 	};
 	
 	

@@ -651,3 +651,20 @@ advanced-search-operators-menu =
 advanced-search-condition-input =
     .aria-label = Value
     .label = { $label }
+
+find-pdf-files-added = { $count ->
+    [one] { $count } file added
+    *[other] { $count } files added
+}
+
+select-items-dialog =
+    .buttonlabelaccept = Select
+
+file-type-webpage = Webpage
+file-type-image = Image
+file-type-pdf = PDF
+file-type-audio = Audio
+file-type-video = Video
+file-type-presentation = Presentation
+file-type-document = Document
+file-type-ebook = Ebook
