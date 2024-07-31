@@ -27,6 +27,8 @@
 }
 
 #sync-reset-radiogroup > div {
+	display: flex;
+	flex-direction: column;
 	margin: 0;
 	padding: 0;
 	list-style: none;
@@ -62,8 +64,4 @@
 
 #sync-reset-radiogroup > div[disabled] span {
 	color: gray;
-}
-
-#sync-reset button {
-	font-size: 14px;
 }

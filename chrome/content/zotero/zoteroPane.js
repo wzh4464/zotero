@@ -114,6 +114,7 @@ var ZoteroPane = new function()
 		zp.addEventListener('UIPropertiesChanged', () => {
 			this.collectionsView?.updateFontSize();
 			this.itemsView?.updateFontSize();
+			this.updatePostUpgradeBanner();
 		});
 		Zotero.UIProperties.registerRoot(document.getElementById('zotero-context-pane'));
 		this.itemPane = document.querySelector("#zotero-item-pane");
@@ -629,6 +630,7 @@ var ZoteroPane = new function()
 		}
 		
 		setTimeout(function () {
+			ZoteroPane.showPostUpgradeBanner();
 			ZoteroPane.showRetractionBanner();
 			ZoteroPane.showArchitectureWarning();
 			ZoteroPane.initSyncReminders(true);
@@ -5665,7 +5667,7 @@ var ZoteroPane = new function()
 			
 			let parentItemID = item.parentItemID;
 			let parentItem = await Zotero.Items.getAsync(parentItemID);
-			var newName = Zotero.Attachments.getFileBaseNameFromItem(parentItem);
+			var newName = Zotero.Attachments.getFileBaseNameFromItem(parentItem, { attachmentTitle: item.getField('title') });
 			
 			let extRE = /\.[^\.]+$/;
 			let origFilename = PathUtils.split(file).pop();
@@ -6143,6 +6145,35 @@ var ZoteroPane = new function()
 	};
 
 	
+	this.showPostUpgradeBanner = function () {
+		if (Zotero.isBetaBuild || Zotero.Prefs.get('firstRunGuidanceShown.z7Banner')) {
+			return;
+		}
+		document.getElementById('post-upgrade-container').removeAttribute('collapsed');
+		this.updatePostUpgradeBanner();
+	};
+	
+	
+	this.updatePostUpgradeBanner = function () {
+		document.getElementById('post-upgrade-density').value = Zotero.Prefs.get('uiDensity');
+	};
+	
+	
+	this.hidePostUpgradeBanner = function (remindMeLater = false) {
+		document.getElementById('post-upgrade-container').setAttribute('collapsed', true);
+		if (remindMeLater) {
+			// The pref should already be false if the banner was showing, but just in case
+			Zotero.Prefs.set('firstRunGuidanceShown.z7Banner', false);
+			setTimeout(() => {
+				this.showPostUpgradeBanner();
+			}, 1000 * 60 * 60 * 24); // 24 hours
+		}
+		else {
+			Zotero.Prefs.set('firstRunGuidanceShown.z7Banner', true);
+		}
+	};
+
+
 	/**
 	 * Sets the layout to either a three-vertical-pane layout and a layout where itemsPane is above itemPane
 	 */
