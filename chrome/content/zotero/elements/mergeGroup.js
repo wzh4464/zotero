@@ -23,6 +23,8 @@
     ***** END LICENSE BLOCK *****
 */
 
+import ReactDOM from "react-dom";
+
 {
 	class MergeGroup extends XULElement {
 		constructor() {
@@ -142,7 +144,6 @@
 			this._mergePane.libraryID = this.libraryID;
 			this._leftPane.data = this._data.left;
 			this._rightPane.data = this._data.right;
-			this._mergePane.data = this._data.merge;
 			
 			if (this._data.selected == 'left') {
 				this.choosePane(this._leftPane);
@@ -290,6 +291,12 @@
 			
 			if (!this.isMergePane) {
 				this.groupbox.onclick = this.click.bind(this);
+			}
+		}
+		
+		disconnectedCallback() {
+			if (this._objboxRoot) {
+				this._objboxRoot.unmount();
 			}
 		}
 		
@@ -449,7 +456,8 @@
 			if (item.isAnnotation()) {
 				Zotero.Annotations.toJSON(item)
 				.then((data) => {
-					Zotero.AnnotationBox.render(objbox, { data });
+					this._objboxRoot = ReactDOM.createRoot(objbox);
+					Zotero.AnnotationBox.render(this._objboxRoot, { data });
 				});
 			}
 			else {

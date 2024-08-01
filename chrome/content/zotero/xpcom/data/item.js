@@ -2794,6 +2794,11 @@ Zotero.Item.prototype.fileExists = Zotero.Promise.coroutine(function* () {
 	if (this.attachmentLinkMode == Zotero.Attachments.LINK_MODE_LINKED_URL) {
 		throw new Error("Zotero.Item.fileExists() cannot be called on link attachments");
 	}
+
+	// Allow unsaved items to be checked, used by conflict-resolution window
+	if (!this.key) {
+		return false;
+	}
 	
 	return !!(yield this.getFilePathAsync());
 });
@@ -3890,7 +3895,7 @@ Zotero.Item.prototype._getDefaultTitleForAttachmentContentType = function () {
 };
 
 
-Zotero.Item.prototype.setAutoAttachmentTitle = function () {
+Zotero.Item.prototype.setAutoAttachmentTitle = function ({ ignoreAutoRenamePrefs } = {}) {
 	if (!this.isAttachment()) {
 		throw new Error("setAutoAttachmentTitle() can only be called on attachment items");
 	}
@@ -3898,11 +3903,14 @@ Zotero.Item.prototype.setAutoAttachmentTitle = function () {
 		return;
 	}
 	
-	// If this is the only attachment of its type on the parent item, give it
-	// a default title ("PDF", "Webpage", etc.)
+	// If this is the only attachment of its type on the parent item and the
+	// file is being renamed, give it a default title ("PDF", "Webpage", etc.)
 	let isFirstOfType = this.parentItemID
 		&& this.parentItem.numFileAttachmentsWithContentType(this.attachmentContentType) <= 1;
-	if (isFirstOfType) {
+	let isBeingRenamed = ignoreAutoRenamePrefs
+		|| (Zotero.Attachments.shouldAutoRenameFile(this.isLinkedFileAttachment())
+			&& Zotero.Attachments.isRenameAllowedForType(this.attachmentContentType));
+	if (isFirstOfType && isBeingRenamed) {
 		let defaultTitle = this._getDefaultTitleForAttachmentContentType();
 		if (defaultTitle !== null) {
 			this.setField('title', defaultTitle);

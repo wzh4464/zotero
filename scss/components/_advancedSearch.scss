@@ -1,4 +1,6 @@
 #zotero-advanced-search-dialog {
+	@include macOS-normalize-controls;
+	
 	min-height: 500px;
 	min-width: 700px;
 	
@@ -8,6 +10,10 @@
 	
 	#zotero-search-box-controls {
 		padding: 3px;
+	}
+	
+	#recursiveCheckbox, #noChildrenCheckbox, #includeParentsAndChildrenCheckbox {
+		margin: 3px 6px;
 	}
 	
 	#zotero-search-buttons {

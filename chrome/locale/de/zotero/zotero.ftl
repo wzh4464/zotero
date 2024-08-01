@@ -11,6 +11,7 @@ general-choose-file = Datei auswählen...
 general-open-settings = Einstellungen öffnen
 general-help = Hilfe
 general-tag = Tag
+general-done = Erledigt
 menu-file-show-in-finder =
     .label = In Finder anzeigen
 menu-file-show-file =
@@ -184,10 +185,10 @@ report-error =
     .label = Fehler melden...
 rtfScan-wizard =
     .title = RTF-Scan
-rtfScan-introPage-description = { -app-name } Kann automatisch Zitationen aus einer RTF-Datei extrahieren, neu formatieren und eine Bibliographie erstellen. Wählen Sie unten eine RTF-Datei aus, um den Prozess zu beginnen.
+rtfScan-introPage-description = { -app-name } can automatically extract and reformat citations and insert a bibliography into RTF files. It currently supports citations in variations of the following formats:
 rtfScan-introPage-description2 = Als ersten Schritt wählen Sie eine RTF-Datei als Input und eine Output-Datei aus:
-rtfScan-input-file = Input-Datei
-rtfScan-output-file = Output-Datei
+rtfScan-input-file = Input File:
+rtfScan-output-file = Output File:
 rtfScan-no-file-selected = Keine Datei ausgewählt
 rtfScan-choose-input-file =
     .label = { general-choose-file }
@@ -568,3 +569,24 @@ advanced-search-operators-menu =
 advanced-search-condition-input =
     .aria-label = Wert
     .label = { $label }
+find-pdf-files-added =
+    { $count ->
+        [one] { $count } file added
+       *[other] { $count } files added
+    }
+select-items-dialog =
+    .buttonlabelaccept = Select
+file-type-webpage = Webseite
+file-type-image = Bild
+file-type-pdf = PDF
+file-type-audio = Audio
+file-type-video = Video
+file-type-presentation = Vortrag
+file-type-document = Dokument
+file-type-ebook = eBook
+post-upgrade-message = Learn about the <a data-l10n-name="new-features-link">new features in { -app-name } { $version }</a>
+post-upgrade-density = Choose your preferred layout density:
+post-upgrade-remind-me-later =
+    .label = { general-remind-me-later }
+post-upgrade-done =
+    .label = { general-done }
