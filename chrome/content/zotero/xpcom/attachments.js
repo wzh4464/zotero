@@ -2479,8 +2479,9 @@ Zotero.Attachments = new function () {
 	this.isRenameAllowedForType = function (contentType) {
 		let typePrefixes;
 		try {
-			typePrefixes = (Zotero.Prefs.get('autoRenameFiles.fileTypes') || '')
-				.split(',');
+			typePrefixes = Zotero.Prefs.get('autoRenameFiles.fileTypes')
+				.split(',')
+				.filter(Boolean);
 		}
 		catch (e) {
 			typePrefixes = [];
