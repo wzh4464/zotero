@@ -229,16 +229,9 @@ TODO: Replace with SVG
 #zotero-lookup-panel {
 	min-height: 100px;
 	min-width: 500px;
-	padding: 10px;
 }
 
-#zotero-lookup-multiline-progress
-{
-	height: 2em;
-}
-
-#zotero-lookup-multiline-progress
-{
+#zotero-lookup-multiline-progress {
 	height: 2em;
 }
 
