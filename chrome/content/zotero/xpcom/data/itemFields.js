@@ -299,6 +299,7 @@ Zotero.ItemFields = new function() {
 	 * 'audioRecording' and 'label' returns publisher's fieldID
 	 * 'book' and 'publisher' returns publisher's fieldID
 	 * 'audioRecording' and 'runningTime' returns false
+	 * 'note' and 'runningTime' returns false
 	 *
 	 * Accepts names or ids
 	 */
@@ -312,12 +313,8 @@ Zotero.ItemFields = new function() {
 		
 		_fieldCheck(typeField);
 		
-		if (!this.isValidForType(typeFieldID, itemTypeID)) {
-			throw new Error("'" + typeField + "' is not a valid field for '" + itemType + "'");
-		}
-		
 		// If typeField is already a base field, just return that
-		if (this.isBaseField(typeFieldID)) {
+		if (_baseTypeFields[itemTypeID][typeFieldID]) {
 			return typeFieldID;
 		}
 		
@@ -418,6 +415,83 @@ Zotero.ItemFields = new function() {
 	}
 	
 	
+	/**
+	 * Guess the text direction of a field, using the item's language field if available.
+	 *
+	 * @param {number} itemTypeID
+	 * @param {string | number} field
+	 * @param {string} [itemLanguage]
+	 * @returns {'auto' | 'ltr' | 'rtl'}
+	 */
+	this.getDirection = function (itemTypeID, field, itemLanguage) {
+		// Collection in trash
+		if (!itemTypeID) {
+			return Zotero.dir;
+		}
+		// Date fields: follow app locale
+		switch (field) {
+			case 'dateAdded':
+			case 'dateModified':
+			case 'accessDate':
+				return Zotero.dir;
+		}
+		
+		var fieldName = this.getName(field);
+		if (fieldName) {
+			let baseField = this.getBaseIDFromTypeAndField(itemTypeID, fieldName);
+			if (baseField) {
+				fieldName = this.getName(baseField);
+			}
+		}
+		switch (fieldName) {
+			// Certain fields containing IDs, numbers, and data: always LTR
+			case 'ISBN':
+			case 'ISSN':
+			case 'DOI':
+			case 'url':
+			case 'callNumber':
+			case 'volume':
+			case 'numberOfVolumes':
+			case 'issue':
+			case 'runningTime':
+			case 'number':
+			case 'versionNumber':
+			case 'applicationNumber':
+			case 'priorityNumbers':
+			case 'codeNumber':
+			case 'pages':
+			case 'numPages':
+			case 'seriesNumber':
+			case 'edition':
+			case 'citationKey':
+			case 'language':
+			case 'extra':
+				return 'ltr';
+			
+			// Everything else (including false): guess based on the language if we have one;
+			// otherwise auto
+			default:
+				if (itemLanguage) {
+					let languageCode = Zotero.Utilities.Item.languageToISO6391(itemLanguage);
+					try {
+						let locale = new Intl.Locale(languageCode).maximize();
+						// https://www.w3.org/International/questions/qa-scripts#directions
+						// TODO: Remove this once Fx supports Intl.Locale#getTextInfo()
+						if (['Adlm', 'Arab', 'Aran', 'Rohg', 'Hebr', 'Mand', 'Mend', 'Nkoo', 'Hung', 'Samr', 'Syrc', 'Thaa', 'Yezi']
+								.includes(locale.script)) {
+							return 'rtl';
+						}
+					}
+					catch (e) {
+						Zotero.logError(e);
+					}
+					return 'ltr';
+				}
+				return 'auto';
+		}
+	};
+
+
 	/**
 	* Check whether a field is valid, throwing an exception if not
 	* (since it should never actually happen)

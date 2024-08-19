@@ -105,7 +105,7 @@ VIAddVersionKey "OriginalFilename" "setup.exe"
 
 Name "${BrandFullName}"
 OutFile "setup.exe"
-!ifdef HAVE_64BIT_OS
+!ifdef HAVE_64BIT_BUILD
   InstallDir "$PROGRAMFILES64\${BrandFullName}\"
 !else
   InstallDir "$PROGRAMFILES32\${BrandFullName}\"
@@ -177,10 +177,10 @@ Function UninstallOld
   enum_uninst_keys:
     EnumRegKey $1 HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall" $0
     StrCmp $1 "" continue_installation
-    ; $R1 migth be "Zotero Standalone" or "Zotero", registry key name contains version and locale e.g. "Zotero 6.0.0 (x86 en-US)" so:
-    StrLen $3 $R1 ; $3 = length of $R1, e.g. 17 for "Zotero Standalone"
-    StrCpy $2 $1 $3 ; $2 = first $3 characters of $1, i.e. name without version and locale, e.g. "Zotero Standalone"
-    StrCmp $2 $R1 get_uninst_exe ; if the key we found is the one we're looking for (e.g. "Zotero Standalone"), go to get_uninst_exe
+    ; $R1 is "Zotero", registry key name contains version and locale e.g. "Zotero 6.0.0 (x86 en-US)" so:
+    StrLen $3 $R1 ; $3 = length of $R1, e.g. 6 for "Zotero"
+    StrCpy $2 $1 $3 ; $2 = first $3 characters of $1, i.e. name without version and locale, e.g. "Zotero"
+    StrCmp $2 $R1 get_uninst_exe ; if the key we found is the one we're looking for (e.g. "Zotero"), go to get_uninst_exe
     IntOp $0 $0 + 1 
     Goto enum_uninst_keys ; loop through all keys
 
@@ -606,16 +606,26 @@ FunctionEnd
 Function CheckExistingInstall
   ; If there is a pending file copy from a previous upgrade don't allow
   ; installing until after the system has rebooted.
-  IfFileExists "$INSTDIR\${FileMainEXE}.moz-upgrade" +1 +4
-  MessageBox MB_YESNO|MB_ICONEXCLAMATION "$(WARN_RESTART_REQUIRED_UPGRADE)" IDNO +2
+  IfFileExists "$INSTDIR\${FileMainEXE}.moz-upgrade" +1 +5
+  MessageBox MB_YESNOCANCEL|MB_ICONEXCLAMATION "$(WARN_RESTART_REQUIRED_UPGRADE)" IDNO +3 IDCANCEL +2
   Reboot
+  Quit
+  RMDir /r $INSTDIR
+
+  IfFileExists "$INSTDIR\${FileMainEXE}.moz-upgrade" +1 +3
+  MessageBox MB_OK|MB_ICONEXCLAMATION "Failed to remove the previous installation. Please delete $INSTDIR and try again."
   Quit
 
   ; If there is a pending file deletion from a previous uninstall don't allow
   ; installing until after the system has rebooted.
-  IfFileExists "$INSTDIR\${FileMainEXE}.moz-delete" +1 +4
-  MessageBox MB_YESNO|MB_ICONEXCLAMATION "$(WARN_RESTART_REQUIRED_UNINSTALL)" IDNO +2
+  IfFileExists "$INSTDIR\${FileMainEXE}.moz-delete" +1 +5
+  MessageBox MB_YESNOCANCEL|MB_ICONEXCLAMATION "$(WARN_RESTART_REQUIRED_UNINSTALL)" IDNO +3 IDCANCEL +2
   Reboot
+  Quit
+  RMDir /r $INSTDIR
+
+  IfFileExists "$INSTDIR\${FileMainEXE}.moz-delete" +1 +3
+  MessageBox MB_OK|MB_ICONEXCLAMATION "Failed to remove the previous installation. Please delete $INSTDIR and try again."
   Quit
 
   ${If} ${FileExists} "$INSTDIR\${FileMainEXE}"
@@ -924,19 +934,46 @@ Function .onInit
 
   ${InstallOnInitCommon} "$(WARN_MIN_SUPPORTED_OS_MSG)"
 
+  !ifdef HAVE_64BIT_BUILD
+    ${If} "${ARCH}" == "AArch64"
+      ${IfNot} ${IsNativeARM64}
+        MessageBox MB_OK|MB_ICONSTOP "$(WARN_MIN_SUPPORTED_OS_MSG)" IDOK
+        ; Nothing initialized so no need to call OnEndCommon
+        Quit
+      ${EndIf}
+    ${ElseIfNot} ${RunningX64}
+      MessageBox MB_OK|MB_ICONSTOP "$(WARN_MIN_SUPPORTED_OS_MSG)" IDOK
+      ; Nothing initialized so no need to call OnEndCommon
+      Quit
+    ${EndIf}
+  !endif
+
   StrCpy $R1 "Zotero Standalone"
   StrCpy $R2 "An older version of Zotero is installed. If you continue, the existing version will be removed.$\n$\nYour Zotero data will not be affected."
   Call UninstallOld
 
-  !ifdef HAVE_64BIT_OS
+  !ifdef HAVE_64BIT_BUILD
     SetRegView 32
       StrCpy $R1 "Zotero"
       StrCpy $R2 "A 32-bit version of Zotero is installed. If you continue, it will be replaced with a 64-bit version that offers better performance.$\n$\nYour Zotero data will not be affected."
       Call UninstallOld
     SetRegView 64
   !endif
-  
-  !ifndef HAVE_64BIT_OS
+
+  !ifdef HAVE_64BIT_BUILD
+    ${If} "${ARCH}" == "x64"
+      ${If} ${IsNativeARM64}
+        MessageBox MB_OKCANCEL|MB_ICONEXCLAMATION|MB_DEFBUTTON2 \
+          "This installer is for the x64 version of Zotero, but you appear to be running an ARM version of Windows.$\n$\nFor the best performance, please cancel and download the ARM version of Zotero for Windows." \
+          /SD IDOK IDOK continue_architecture IDCANCEL cancel_architecture
+          cancel_architecture:
+            Abort
+          continue_architecture:
+      ${EndIf}
+    ${EndIf}
+  !endif
+
+  !ifndef HAVE_64BIT_BUILD
     ${If} ${RunningX64}
       MessageBox MB_OKCANCEL|MB_ICONEXCLAMATION|MB_DEFBUTTON2 \
         "This installer is for the 32-bit version of Zotero, but you appear to be running a 64-bit version of Windows.$\n$\nFor the best performance, please cancel and download the 64-bit version of Zotero." \

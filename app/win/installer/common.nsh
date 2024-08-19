@@ -959,7 +959,7 @@ Var Trash
 
 !define KEY_SET_VALUE 0x0002
 !define KEY_WOW64_64KEY 0x0100
-!ifndef HAVE_64BIT_OS
+!ifndef HAVE_64BIT_BUILD
   !define CREATE_KEY_SAM ${KEY_SET_VALUE}
 !else
   !define CREATE_KEY_SAM ${KEY_SET_VALUE}|${KEY_WOW64_64KEY}
@@ -1280,6 +1280,7 @@ Var Trash
   ; (not on Windows XP http://support.microsoft.com/kb/282747) so just use it
   ; when installing on an x64 systems even when installing an x86 application.
   ${If} ${RunningX64}
+  ${OrIf} ${IsNativeARM64}
     ${DisableX64FSRedirection}
     ExecWait '"$SYSDIR\regsvr32.exe" /s "${DLL}"'
     ${EnableX64FSRedirection}
@@ -1295,6 +1296,7 @@ Var Trash
   ; (not on Windows XP http://support.microsoft.com/kb/282747) so just use it
   ; when installing on an x64 systems even when installing an x86 application.
   ${If} ${RunningX64}
+  ${OrIf} ${IsNativeARM64}
     ${DisableX64FSRedirection}
     ExecWait '"$SYSDIR\regsvr32.exe" /s /u "${DLL}"'
     ${EnableX64FSRedirection}
@@ -2114,11 +2116,12 @@ FunctionEnd
       StrCpy $R6 0  ; set the counter for the outer loop to 0
 
       ${If} ${RunningX64}
+      ${OrIf} ${IsNativeARM64}
         StrCpy $R0 "false"
         ; Set the registry to the 32 bit registry for 64 bit installations or to
         ; the 64 bit registry for 32 bit installations at the beginning so it can
         ; easily be set back to the correct registry view when finished.
-        !ifdef HAVE_64BIT_OS
+        !ifdef HAVE_64BIT_BUILD
           SetRegView 32
         !else
           SetRegView 64
@@ -2185,9 +2188,10 @@ FunctionEnd
 
       end:
       ${If} ${RunningX64}
+      ${OrIf} ${IsNativeARM64}
       ${AndIf} "$R0" == "false"
         ; Set the registry to the correct view.
-        !ifdef HAVE_64BIT_OS
+        !ifdef HAVE_64BIT_BUILD
           SetRegView 64
         !else
           SetRegView 32
@@ -4150,21 +4154,16 @@ FunctionEnd
       Push $R6
       Push $R5
 
-      !ifdef HAVE_64BIT_OS
-        ${Unless} ${RunningX64}
-        ${OrUnless} ${AtLeastWin7}
+      ; Windows NT 6.0 (Vista/Server 2008) and lower are not supported.
+      ; TODO for Zotero: Change to Win10 with Fx128
+      ${Unless} ${AtLeastWin7}
           MessageBox MB_OK|MB_ICONSTOP "$R9" IDOK
           ; Nothing initialized so no need to call OnEndCommon
           Quit
-        ${EndUnless}
+      ${EndUnless}
 
+      !ifdef HAVE_64BIT_BUILD
         SetRegView 64
-      !else
-        ${Unless} ${AtLeastWin7}
-          MessageBox MB_OK|MB_ICONSTOP "$R9" IDOK
-          ; Nothing initialized so no need to call OnEndCommon
-          Quit
-        ${EndUnless}
       !endif
 
       ${GetParameters} $R8
@@ -4199,7 +4198,7 @@ FunctionEnd
             SetSilent silent
             ReadINIStr $R8 $R7 "Install" "InstallDirectoryName"
             ${If} $R8 != ""
-              !ifdef HAVE_64BIT_OS
+              !ifdef HAVE_64BIT_BUILD
                 StrCpy $INSTDIR "$PROGRAMFILES64\$R8"
               !else
                 StrCpy $INSTDIR "$PROGRAMFILES32\$R8"
@@ -4768,11 +4767,7 @@ FunctionEnd
         ${LogMsg} "OS Name    : Unable to detect"
       ${EndIf}
 
-      !ifdef HAVE_64BIT_OS
-        ${LogMsg} "Target CPU : x64"
-      !else
-        ${LogMsg} "Target CPU : x86"
-      !endif
+      ${LogMsg} "Target CPU : ${ARCH}"
 
       Pop $9
       Pop $R0
