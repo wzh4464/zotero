@@ -1,7 +1,19 @@
 describe("Document Recognition", function() {
 	var win;
 	
+	async function waitForProgressWindow() {
+		// Wait for status to show as complete
+		let progressWindow = getWindows("chrome://zotero/content/progressQueueDialog.xhtml")[0];
+		let completeStr = Zotero.getString("general.finished");
+		while (progressWindow.document.getElementById("label").value != completeStr) {
+			await Zotero.Promise.delay(20);
+		}
+	}
+	
 	before(function* () {
+		// Don't slow down attachment imports with indexing
+		Zotero.Prefs.set('fulltext.textMaxLength', 0);
+		
 		this.timeout(60000);
 		// Load Zotero pane and install PDF tools
 		yield Zotero.Promise.all([
@@ -30,6 +42,8 @@ describe("Document Recognition", function() {
 	});
 	
 	after(function() {
+		Zotero.Prefs.clear('fulltext.textMaxLength');
+		
 		if (win) {
 			win.close();
 		}
@@ -54,12 +68,7 @@ describe("Document Recognition", function() {
 			assert.equal(item.getField("libraryCatalog"), "DOI.org (Crossref)");
 			assert.lengthOf(modifiedIDs, 2);
 			
-			// Wait for status to show as complete
-			var progressWindow = getWindows("chrome://zotero/content/progressQueueDialog.xhtml")[0];
-			var completeStr = Zotero.getString("general.finished");
-			while (progressWindow.document.getElementById("label").value != completeStr) {
-				await Zotero.Promise.delay(20);
-			}
+			await waitForProgressWindow();
 			
 			// The file should have been renamed
 			assert.equal(
@@ -93,12 +102,7 @@ describe("Document Recognition", function() {
 			assert.equal(item.getField("title"), "Scaling study of an improved fermion action on quenched lattices");
 			assert.lengthOf(modifiedIDs, 1);
 			
-			// Wait for status to show as complete
-			var progressWindow = getWindows("chrome://zotero/content/progressQueueDialog.xhtml")[0];
-			var completeStr = Zotero.getString("general.finished");
-			while (progressWindow.document.getElementById("label").value != completeStr) {
-				await Zotero.Promise.delay(20);
-			}
+			await waitForProgressWindow();
 
 			// The title should have changed
 			assert.equal(
@@ -129,12 +133,7 @@ describe("Document Recognition", function() {
 			var item = Zotero.Items.get(addedIDs[0]);
 			assert.lengthOf(modifiedIDs, 1);
 			
-			// Wait for status to show as complete
-			var progressWindow = getWindows("chrome://zotero/content/progressQueueDialog.xhtml")[0];
-			var completeStr = Zotero.getString("general.finished");
-			while (progressWindow.document.getElementById("label").value != completeStr) {
-				await Zotero.Promise.delay(20);
-			}
+			await waitForProgressWindow();
 			
 			assert.isTrue(collection.hasItem(item.id));
 		});
@@ -162,12 +161,7 @@ describe("Document Recognition", function() {
 			var item = Zotero.Items.get(addedIDs[0]);
 			assert.lengthOf(modifiedIDs, 1);
 			
-			// Wait for status to show as complete
-			var progressWindow = getWindows("chrome://zotero/content/progressQueueDialog.xhtml")[0];
-			var completeStr = Zotero.getString("general.finished");
-			while (progressWindow.document.getElementById("label").value != completeStr) {
-				await Zotero.Promise.delay(20);
-			}
+			await waitForProgressWindow();
 			
 			assert.isTrue(collection.hasItem(item.id));
 		});
@@ -194,12 +188,7 @@ describe("Document Recognition", function() {
 			var item = Zotero.Items.get(addedIDs[0]);
 			assert.lengthOf(modifiedIDs, 2);
 			
-			// Wait for status to show as complete
-			var progressWindow = getWindows("chrome://zotero/content/progressQueueDialog.xhtml")[0];
-			var completeStr = Zotero.getString("general.finished");
-			while (progressWindow.document.getElementById("label").value != completeStr) {
-				await Zotero.Promise.delay(20);
-			}
+			await waitForProgressWindow();
 			
 			assert.isTrue(collection.hasItem(item.id));
 		});
@@ -226,12 +215,7 @@ describe("Document Recognition", function() {
 			var item = Zotero.Items.get(addedIDs[0]);
 			assert.lengthOf(modifiedIDs, 2);
 			
-			// Wait for status to show as complete
-			var progressWindow = getWindows("chrome://zotero/content/progressQueueDialog.xhtml")[0];
-			var completeStr = Zotero.getString("general.finished");
-			while (progressWindow.document.getElementById("label").value != completeStr) {
-				await Zotero.Promise.delay(20);
-			}
+			await waitForProgressWindow();
 			
 			assert.isTrue(collection.hasItem(item.id));
 		});
@@ -260,12 +244,7 @@ describe("Document Recognition", function() {
 			assert.equal(item.getField("title"), itemTitle);
 			assert.lengthOf(modifiedIDs, 2);
 			
-			// Wait for status to show as complete
-			var progressWindow = getWindows("chrome://zotero/content/progressQueueDialog.xhtml")[0];
-			var completeStr = Zotero.getString("general.finished");
-			while (progressWindow.document.getElementById("label").value != completeStr) {
-				await Zotero.Promise.delay(20);
-			}
+			await waitForProgressWindow();
 			
 			// The file should have been renamed
 			assert.equal(
@@ -300,12 +279,7 @@ describe("Document Recognition", function() {
 			assert.equal(item.getField("title"), itemTitle);
 			assert.lengthOf(modifiedIDs, 2);
 
-			// Wait for status to show as complete
-			var progressWindow = getWindows("chrome://zotero/content/progressQueueDialog.xhtml")[0];
-			var completeStr = Zotero.getString("general.finished");
-			while (progressWindow.document.getElementById("label").value != completeStr) {
-				await Zotero.Promise.delay(20);
-			}
+			await waitForProgressWindow();
 
 			// The file should not have been renamed
 			assert.equal(attachment.attachmentFilename, 'test.pdf');
@@ -338,12 +312,7 @@ describe("Document Recognition", function() {
 			assert.equal(item.getField("title"), itemTitle);
 			assert.lengthOf(modifiedIDs, 2);
 			
-			// Wait for status to show as complete
-			var progressWindow = getWindows("chrome://zotero/content/progressQueueDialog.xhtml")[0];
-			var completeStr = Zotero.getString("general.finished");
-			while (progressWindow.document.getElementById("label").value != completeStr) {
-				await Zotero.Promise.delay(20);
-			}
+			await waitForProgressWindow();
 			
 			// The file should not have been renamed
 			assert.equal(attachment.attachmentFilename, 'test.pdf');
@@ -388,12 +357,73 @@ describe("Document Recognition", function() {
 			assert.equal(Zotero.Utilities.cleanISBN(item.getField('ISBN')), isbn);
 			assert.lengthOf(modifiedIDs, 2);
 
-			// Wait for status to show as complete
-			let progressWindow = getWindows("chrome://zotero/content/progressQueueDialog.xhtml")[0];
-			let completeStr = Zotero.getString("general.finished");
-			while (progressWindow.document.getElementById("label").value != completeStr) {
-				await Zotero.Promise.delay(20);
-			}
+			await waitForProgressWindow();
+
+			// The file should have been renamed
+			assert.equal(
+				attachment.attachmentFilename,
+				Zotero.Attachments.getFileBaseNameFromItem(item) + '.epub'
+			);
+
+			// The title should have changed
+			assert.equal(
+				attachment.getField('title'),
+				Zotero.getString('file-type-ebook')
+			);
+
+			translateStub.restore();
+		});
+		
+		it("should recognize an EPUB by DOI and rename the file", async function () {
+			let doi = '10.1177/20539517241232630';
+			let search;
+			let translateStub = sinon.stub(Zotero.Translate.Search.prototype, 'translate')
+				.callsFake(async function () {
+					search = this.search;
+					return [{
+						itemType: "journalArticle",
+						title: "Big AI: Cloud infrastructure dependence and the industrialisation of artificial intelligence",
+						publicationTitle: "Big Data & Society",
+						DOI: "10.1177/20539517241232630",
+						creators: [
+							{
+								firstName: "Fernando",
+								lastName: "Van Der Vlist",
+								creatorType: "author"
+							},
+							{
+								firstName: "Anne",
+								lastName: "Helmond",
+								creatorType: "author"
+							},
+							{
+								firstName: "Fabian",
+								lastName: "Ferrari",
+								creatorType: "author"
+							}
+						],
+						tags: []
+					}];
+				});
+
+			let testDir = getTestDataDirectory();
+			testDir.append('recognizeEPUB_test_DOI.epub');
+			let attachment = await Zotero.Attachments.importFromFile({ file: testDir });
+
+			win.ZoteroPane.recognizeSelected();
+
+			let addedIDs = await waitForItemEvent('add');
+			let modifiedIDs = await waitForItemEvent('modify');
+			assert.isTrue(translateStub.calledOnce);
+			assert.ok(search);
+			assert.equal(search.DOI, doi);
+			assert.lengthOf(addedIDs, 1);
+			let item = Zotero.Items.get(addedIDs[0]);
+			assert.equal(item.getField('title'), 'Big AI: Cloud infrastructure dependence and the industrialisation of artificial intelligence');
+			assert.equal(Zotero.Utilities.cleanDOI(item.getField('DOI')), doi);
+			assert.lengthOf(modifiedIDs, 2);
+
+			await waitForProgressWindow();
 
 			// The file should have been renamed
 			assert.equal(
@@ -410,7 +440,7 @@ describe("Document Recognition", function() {
 			translateStub.restore();
 		});
 
-		it("should recognize an EPUB without an ISBN and rename the file", async function () {
+		it("should recognize an EPUB without identifiers and rename the file", async function () {
 			let testDir = getTestDataDirectory();
 			testDir.append('recognizeEPUB_test_DC.epub');
 			let attachment = await Zotero.Attachments.importFromFile({ file: testDir });
@@ -426,12 +456,7 @@ describe("Document Recognition", function() {
 			assert.equal(item.getField('ISBN'), '');
 			assert.lengthOf(modifiedIDs, 2);
 
-			// Wait for status to show as complete
-			let progressWindow = getWindows("chrome://zotero/content/progressQueueDialog.xhtml")[0];
-			let completeStr = Zotero.getString("general.finished");
-			while (progressWindow.document.getElementById("label").value != completeStr) {
-				await Zotero.Promise.delay(20);
-			}
+			await waitForProgressWindow();
 
 			// The file should have been renamed
 			assert.equal(
@@ -613,12 +638,7 @@ describe("Document Recognition", function() {
 			let addedIDs = await waitForItemEvent('add');
 			await waitForItemEvent('modify');
 
-			// Wait for status to show as complete
-			var progressWindow = getWindows("chrome://zotero/content/progressQueueDialog.xhtml")[0];
-			var completeStr = Zotero.getString("general.finished");
-			while (progressWindow.document.getElementById("label").value != completeStr) {
-				await Zotero.Promise.delay(20);
-			}
+			await waitForProgressWindow();
 
 			assert.isTrue(translateStub.calledOnce);
 			assert.ok(search);
