@@ -1,4 +1,5 @@
 #!/bin/bash
+cd ~/codes/zotero
 
 # 检查当前目录是否是一个 Git 仓库
 if [ ! -d ".git" ]; then
