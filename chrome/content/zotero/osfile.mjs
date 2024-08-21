@@ -286,6 +286,28 @@ export let OS = {
 		},
 		
 		fromFileURI: function (uri) {
+			if (Services.appinfo.OS == "WINNT") {
+				let url = new URL(uri);
+				if (url.protocol != "file:") {
+					throw new Error("fromFileURI expects a file URI");
+				}
+			
+				// strip leading slash, since Windows paths don't start with one
+				uri = url.pathname.substr(1);
+			
+				let path = decodeURI(uri);
+				// decode a few characters where URL's parsing is overzealous
+				path = path.replace(/%(3b|3f|23)/gi, match => decodeURIComponent(match));
+				path = this.normalize(path);
+			
+				// this.normalize() does not remove the trailing slash if the path
+				// component is a drive letter. eg. 'C:\'' will not get normalized.
+				if (path.endsWith(":\\")) {
+					path = path.substr(0, path.length - 1);
+				}
+				return this.normalize(path);
+			}
+			
 			let url = new URL(uri);
 			if (url.protocol != "file:") {
 				throw new Error("fromFileURI expects a file URI");
@@ -316,6 +338,59 @@ export let OS = {
 		
 		// From Firefox 102
 		normalize: function (path) {
+			if (Services.appinfo.OS == "WINNT") {
+				let stack = [];
+				
+				if (!path.startsWith("\\\\")) {
+					// Normalize "/" to "\\"
+					path = path.replace(/\//g, "\\");
+				}
+				
+				// Remove the drive (we will put it back at the end)
+				let root = winGetDrive(path);
+				if (root) {
+					path = path.slice(root.length);
+				}
+				
+				// Remember whether we need to restore a leading "\\" or drive name.
+				let absolute = winIsAbsolute(path);
+				
+				// And now, fill |stack| from the components,
+				// popping whenever there is a ".."
+				path.split("\\").forEach(function loop(v) {
+					switch (v) {
+						case "":
+						case ".": // Ignore
+							break;
+						case "..":
+							if (!stack.length) {
+								if (absolute) {
+									throw new Error("Path is ill-formed: attempting to go past root");
+								} else {
+									stack.push("..");
+								}
+							} else if (stack[stack.length - 1] == "..") {
+								stack.push("..");
+							} else {
+								stack.pop();
+							}
+							break;
+						default:
+							stack.push(v);
+					}
+				});
+				
+				// Put everything back together
+				let result = stack.join("\\");
+				if (absolute || root) {
+					result = "\\" + result;
+				}
+				if (root) {
+					result = root + result;
+				}
+				return result;
+			}
+			
 			let stack = [];
 			let absolute;
 			if (path.length >= 0 && path[0] == "/") {
@@ -399,6 +474,11 @@ var winGetDrive = function (path) {
 	let index = path.indexOf(":");
 	if (index <= 0) return null;
 	return path.slice(0, index + 1);
+};
+
+var winIsAbsolute = function (path) {
+	let index = path.indexOf(":");
+	return path.length > index + 1 && path[index + 1] == "\\";
 };
 
 function wrapWrite(func) {
