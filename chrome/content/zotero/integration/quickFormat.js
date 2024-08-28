@@ -71,17 +71,8 @@ var Zotero_QuickFormat = new function () {
 			if(Zotero.isMac) {
 				document.documentElement.setAttribute("drawintitlebar", true);
 			}
-	
-			// Required for dragging to work on windows.
-			// These values are important and changing them may affect how the dialog
-			// is rendered
-			if (Zotero.isWin) {
-				document.documentElement.setAttribute('chromemargin', '0,0,15,0');
-			}
-
-			// Hide chrome on linux and explcitly make window unresizable
+			// Hide chrome on linux
 			if (Zotero.isLinux) {
-				document.documentElement.setAttribute("resizable", false);
 				document.documentElement.setAttribute("hidechrome", true);
 			}
 
@@ -300,7 +291,6 @@ var Zotero_QuickFormat = new function () {
 				_updateItemList({ citedItems: [] });
 			});
 			refocusInput();
-			_initWindowDragTracker();
 		}
 		catch (e) {
 			Zotero.logError(e);
@@ -1278,46 +1268,6 @@ var Zotero_QuickFormat = new function () {
 		e.preventDefault();
 	}
 
-	/**
-	 * FX115.
-	 * Keep track when the window is being dragged and if so - hide reference panel.
-	 * Reopen it when the window stops being dragged.
-	 * This is to handle the <panel> not following the window as it is moved across the screen.
-	 * -moz-window-drag interferes with mouseup/down events on windows, so this is an alternative
-	 * to those listeners.
-	 */
-	function _initWindowDragTracker() {
-		const CHECK_FREQUENCY = 100;
-		let windowTop = window.screenTop;
-		let windowLeft = window.screenLeft;
-		let checksWithoutMovement = 0;
-		let checkWindowsPosition = () => {
-			// Don't let the counter increase indefinitely
-			if (checksWithoutMovement > 1000000) {
-				checksWithoutMovement = 10;
-			}
-			setTimeout(() => {
-				// If the window's positioning changed, the window is being dragged. Hide the reference panel
-				if (windowTop !== window.screenTop || windowLeft !== window.screenLeft) {
-					referencePanel.hidePopup();
-					windowTop = window.screenTop;
-					windowLeft = window.screenLeft;
-					checksWithoutMovement = 0;
-					checkWindowsPosition();
-					return;
-				}
-				// If the position hasn't changed for a while, make sure the panel is reopened.
-				if (checksWithoutMovement == 2 && isInput(document.activeElement) && referencePanel.state !== "open") {
-					_resizeReferencePanel();
-				}
-				checksWithoutMovement += 1;
-				// Keep checking every once in a while
-				checkWindowsPosition();
-			}, CHECK_FREQUENCY);
-		};
-		checkWindowsPosition();
-	}
-
 	// Set the editor's width so that it fills up all remaining space in the window.
 	// It should be window.width - padding - icon wrappers width. The is needed to be explicitly set
 	// so that the editor's height expands/shrinks vertically without going outside of the
@@ -1334,39 +1284,29 @@ var Zotero_QuickFormat = new function () {
 			editor.style.width = `${editorDesiredWidth}px`;
 		}
 	}
-	function _resizeWindow() {
+	async function _resizeWindow() {
 		let box = document.querySelector(".citation-dialog.entry");
-		let contentHeight = box.getBoundingClientRect().height;
-		// Resized so that outerHeight=contentHeight
-		let outerHeightAdjustment = Math.max(window.outerHeight - window.innerHeight, 0);
+		let height = box.getBoundingClientRect().height;
 		let width = WINDOW_WIDTH;
-		let height = contentHeight + outerHeightAdjustment;
-		// On windows, there is a 10px margin around the dialog. It's required for dragging
-		// to be picked up at the edges of the dialog, otherwise it will be ignored and only
-		// inner half of the dialog can be used to drag the window.
-		if (Zotero.isWin) {
-			width += 10 * 2;
-			height += 10 * 2;
-		}
-		if (Math.abs(height - window.innerHeight) < 5) {
+		// Force resizing if there is no max height set on the window
+		let maySkip = !!document.documentElement.style.maxHeight;
+		if (Math.abs(height - window.innerHeight) < 5 && maySkip) {
 			// Do not do anything if the difference is just a few pixels
 			return;
 		}
+		// Remove height limitation to let the window resize
+		document.documentElement.style.removeProperty("max-height");
+		document.documentElement.style.removeProperty("min-height");
+		// Need to wait a moment for the css change above to take effect (mainly for mac)
+		await Zotero.Promise.delay(5);
 		window.resizeTo(width, height);
-		// If the editor height changes, the panel will remain where it was.
-		// Check if the panel is not next to the dialog, and if so - close and reopen it
-		// to position references panel properly
-		let dialogBottom = dialog.getBoundingClientRect().bottom;
-		let panelTop = referencePanel.getBoundingClientRect().top;
-		if (Math.abs(dialogBottom - panelTop) > 5 && referencePanel.state == "open") {
-			referencePanel.hidePopup();
-			// Skip a tick, otherwise the panel may just remain open where it was
-			setTimeout(_openReferencePanel);
-		}
 		if (Zotero.isMac && Zotero.platformMajorVersion >= 60) {
 			document.children[0].setAttribute('drawintitlebar', 'false');
 			document.children[0].setAttribute('drawintitlebar', 'true');
 		}
+		// Make sure the window's width cannot be changed by dragging the edge of the window
+		document.documentElement.style.maxHeight = height + "px";
+		document.documentElement.style.minHeight = height + "px";
 	}
 	
 	function _resizeReferencePanel() {
@@ -1444,7 +1384,7 @@ var Zotero_QuickFormat = new function () {
 			}, false);
 		}
 		// Try to make the panel appear right in the center on windows
-		let leftMargin = Zotero.isWin ? 5 : 15;
+		let leftMargin = Zotero.isWin ? 10 : 15;
 		referencePanel.openPopup(dialog, "after_start", leftMargin, 0, false, false, null);
 		// Initially, panel has an opacity of 0.9 to prevent a shadow from appearing behind the
 		// panel on Windows, but we override it upon the first opening of the panel
