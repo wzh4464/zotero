@@ -48,7 +48,7 @@
 
 		_preview = null;
 
-		_lastPreviewRenderTime = "";
+		_lastPreviewRenderId = "";
 
 		_discardPreviewTimeout = 60000;
 
@@ -189,29 +189,26 @@
 					this._previewDiscarded = false;
 					this.previewElem.render();
 				}
-				this._lastPreviewRenderTime = `${Date.now()}-${Math.random()}`;
+				this._lastPreviewRenderId = `${Date.now()}-${Math.random()}`;
 				return;
 			}
 			this._renderStage = "final";
 			this._asyncRendering = true;
 			
-			await this._updateAttachmentIDs();
+			// Execute sub-tasks concurrently to avoid race condition between different calls
+			await Promise.all([
+				this.updateRows(),
+				this.updatePreview(),
+			]);
 
-			let itemAttachments = Zotero.Items.get(this._attachmentIDs);
-
-			this._attachments.querySelectorAll("attachment-row").forEach(e => e.remove());
-			for (let attachment of itemAttachments) {
-				this.addRow(attachment);
-			}
-			await this.updatePreview();
 			this._asyncRendering = false;
 		}
 
 		discard() {
 			if (!this._preview) return;
-			let lastRenderTime = this._lastPreviewRenderTime;
+			let lastPreviewRenderId = this._lastPreviewRenderId;
 			setTimeout(() => {
-				if (!this._asyncRendering && this._lastPreviewRenderTime === lastRenderTime) {
+				if (!this._asyncRendering && this._lastPreviewRenderId === lastPreviewRenderId) {
 					this._preview?.discard();
 					this._previewDiscarded = true;
 				}
@@ -224,6 +221,17 @@
 			}
 			let count = this._item.numAttachments(this.inTrash);
 			this._section.setCount(count);
+		}
+
+		async updateRows() {
+			await this._updateAttachmentIDs();
+
+			let itemAttachments = Zotero.Items.get(this._attachmentIDs);
+
+			this._attachments.querySelectorAll("attachment-row").forEach(e => e.remove());
+			for (let attachment of itemAttachments) {
+				this.addRow(attachment);
+			}
 		}
 
 		async updatePreview() {
@@ -246,7 +254,7 @@
 			}
 			this.previewElem.item = attachment;
 			await this.previewElem.render();
-			this._lastPreviewRenderTime = `${Date.now()}-${Math.random()}`;
+			this._lastPreviewRenderId = `${Date.now()}-${Math.random()}`;
 		}
 
 		async _getPreviewAttachment() {

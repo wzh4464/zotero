@@ -320,12 +320,44 @@
 					this._previewDiscarded = false;
 					this.previewElem.render();
 				}
-				this._lastPreviewRenderTime = Date.now();
+				this._lastPreviewRenderId = `${Date.now()}-${Math.random()}`;
 				return;
 			}
 
 			Zotero.debug('Refreshing attachment box');
 			this._asyncRendering = true;
+
+			// Execute sub-tasks concurrently to avoid race condition between different calls
+			await Promise.all([
+				this.updateInfo(),
+				this.updatePreview()
+			]);
+
+			this._asyncRendering = false;
+
+			this._lastPreviewRenderId = `${Date.now()}-${Math.random()}`;
+		}
+
+		discard() {
+			if (!this._preview) return;
+			let lastPreviewRenderId = this._lastPreviewRenderId;
+			setTimeout(() => {
+				if (!this._asyncRendering && this._lastPreviewRenderId === lastPreviewRenderId) {
+					this._preview?.discard();
+					this._previewDiscarded = true;
+				}
+			}, this._discardPreviewTimeout);
+		}
+
+		onViewClick(event) {
+			ZoteroPane_Local.viewAttachment(this.item.id, event, !this.editable);
+		}
+
+		onShowClick(event) {
+			ZoteroPane_Local.showAttachmentInFilesystem(this.item.id, event.originalTarget, !this.editable);
+		}
+
+		async updateInfo() {
 			// Cancel editing filename when refreshing
 			this._isEditingFilename = false;
 			
@@ -469,34 +501,13 @@
 			else {
 				selectButton.hidden = true;
 			}
+		}
 
+		async updatePreview() {
 			if (this.usePreview) {
 				this.previewElem.item = this.item;
 				await this.previewElem.render();
 			}
-
-			this._asyncRendering = false;
-
-			this._lastPreviewRenderTime = `${Date.now()}-${Math.random()}`;
-		}
-
-		discard() {
-			if (!this._preview) return;
-			let lastRenderTime = this._lastPreviewRenderId;
-			setTimeout(() => {
-				if (!this._asyncRendering && this._lastPreviewRenderId === lastRenderTime) {
-					this._preview?.discard();
-					this._previewDiscarded = true;
-				}
-			}, this._discardPreviewTimeout);
-		}
-
-		onViewClick(event) {
-			ZoteroPane_Local.viewAttachment(this.item.id, event, !this.editable);
-		}
-
-		onShowClick(event) {
-			ZoteroPane_Local.showAttachmentInFilesystem(this.item.id, event.originalTarget, !this.editable);
 		}
 
 		updateItemIndexedState() {

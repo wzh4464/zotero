@@ -79,17 +79,6 @@ Zotero.Intl = new function () {
 		Zotero.arrowPreviousKey = Zotero.rtl ? 'ArrowRight' : 'ArrowLeft';
 		Zotero.arrowNextKey = Zotero.rtl ? 'ArrowLeft' : 'ArrowRight';
 		
-		this.strings = {};
-		const intlFiles = ['zotero.dtd', 'preferences.dtd', 'mozilla/editMenuOverlay.dtd'];
-		for (let intlFile of intlFiles) {
-			let localeXML = Zotero.File.getContentsFromURL(`chrome://zotero/locale/${intlFile}`);
-			let regexp = /<!ENTITY ([^\s]+)\s+"([^"]+)/g;
-			let regexpResult;
-			while (regexpResult = regexp.exec(localeXML)) {
-				this.strings[regexpResult[1]] = regexpResult[2];
-			}
-		}
-		
 		// Provide synchronous access to Fluent strings for getString()
 		ftl = new Localization([
 			'branding/brand.ftl',
@@ -99,6 +88,29 @@ Zotero.Intl = new function () {
 		], true);
 		Zotero.ftl = ftl;
 	};
+
+
+	ChromeUtils.defineLazyGetter(this, 'strings', () => {
+		const intlFiles = ['zotero.dtd', 'preferences.dtd', 'mozilla/editMenuOverlay.dtd'];
+
+		let strings = [];
+		let { documentElement: elem } = new DOMParser().parseFromString('<root></root>', 'application/xml');
+		for (let intlFile of intlFiles) {
+			let localeXML = Zotero.File.getContentsFromURL(`chrome://zotero/locale/${intlFile}`);
+			let regexp = /<!ENTITY ([^\s]+)\s+"([^"]+)/g;
+			let regexpResult;
+			while ((regexpResult = regexp.exec(localeXML))) {
+				let key = regexpResult[1];
+				let value = regexpResult[2];
+				// Resolve XML entities
+				elem.innerHTML = value;
+				value = elem.textContent;
+
+				strings[key] = value;
+			}
+		}
+		return strings;
+	});
 
 
 	/**

@@ -95,6 +95,15 @@ Services.scriptloader.loadSubScript('chrome://zotero/content/elements/itemPaneSe
 		});
 	}
 
+	// Clear whatever aria semantics the separator has so it is not counted when
+	// screen readers list how many menuitems a menu has.
+	document.addEventListener("popupshowing", (event) => {
+		if (event.originalTarget.tagName !== "menupopup") return;
+		for (let separator of [...event.originalTarget.querySelectorAll("menuseparator")]) {
+			separator.setAttribute("role", "presentation");
+		}
+	});
+
 	// Add MacOS menupopup fade animation to menupopups
 	if (Zotero.isMac) {
 		let MozMenuPopupPrototype = customElements.get("menupopup").prototype;
@@ -161,6 +170,19 @@ Services.scriptloader.loadSubScript('chrome://zotero/content/elements/itemPaneSe
 					}, 200);
 				});
 
+				// If a menu closes with voiceover cursor in it, the cursor gets stuck in no-longer-visible
+				// menu and voiceover will be quiet until it is restarted. Marking the menu
+				// as aria-hidden for a moment forces voiceover to shift its cursor.
+				this.addEventListener("popuphidden", (e) => {
+					if (this !== e.target || this.parentNode?.closest("menupopup")) {
+						return;
+					}
+					this.setAttribute("aria-hidden", true);
+					setTimeout(() => {
+						this.removeAttribute("aria-hidden");
+					});
+				});
+
 				// This event is triggered after clicking the menu and before popuphiding
 				// where we control whether the fade out animation should run
 				this.addEventListener("command", () => {
@@ -170,15 +192,52 @@ Services.scriptloader.loadSubScript('chrome://zotero/content/elements/itemPaneSe
 					// Disable the fading animation when the popup is closed by clicking
 					this.setAttribute("animate", "false-once");
 				});
+				
+				// The _moz-menuactive attribute isn't removed from menulist items
+				// when the mouse leaves the menu. On menulists only, replace the attribute
+				// with a marker that will be used to restore the _moz-menuactive attribute
+				// when the mouse reenters the menu.
+				// (We need to manually restore _moz-menuactive because it won't automatically
+				//  be re-added if the mouse exits the menu and then enters again on the same
+				//  item.)
+				this.addEventListener("mouseleave", () => {
+					if (this.parentElement?.localName !== "menulist") {
+						return;
+					}
+					// Only apply to top-level <menuitems>, not sub-<menu>s or nested <menuitem>s,
+					// because those already have the right behavior
+					let activeChild = this.querySelector(":scope > menuitem[_moz-menuactive='true']");
+					if (activeChild) {
+						activeChild.removeAttribute("_moz-menuactive");
+						activeChild.dataset.activeBeforeMouseleave = "true";
+					}
+				});
+				
+				this.addEventListener("mouseover", (event) => {
+					if (this.parentElement?.localName !== "menulist") {
+						return;
+					}
+					let { target } = event;
+					if (target.parentElement === this && target.dataset.activeBeforeMouseleave) {
+						target.setAttribute("_moz-menuactive", "true");
+						delete target.dataset.activeBeforeMouseleave;
+					}
+				});
 			}
 			originalEnsureInitialized.apply(this);
 		};
 	}
 
-	// inject custom CSS into FF built-in custom elements (currently only <wizard>)
+	// The menulist CE is defined lazily. Create one now to get menulist defined, so we can patch it
+	if (!customElements.get("menulist")) {
+		delete document.createXULElement("menulist");
+	}
+
+	// inject custom CSS into FF built-in custom elements
 	const InjectCSSConfig = {
 		global: [
 			"wizard",
+			"menulist",
 			{
 				element: "dialog",
 				patchedFunction: "connectedCallback"

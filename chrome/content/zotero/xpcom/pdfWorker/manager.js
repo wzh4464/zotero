@@ -206,6 +206,10 @@ class PDFWorker {
 				Zotero.warn("Not exporting missing file " + attachment.getFilePath());
 				return 0;
 			}
+			if (!annotations.length) {
+				await OS.File.copy(attachmentPath, path);
+				return 0;
+			}
 			let buf = await IOUtils.read(attachmentPath);
 			buf = new Uint8Array(buf).buffer;
 
@@ -229,7 +233,7 @@ class PDFWorker {
 				throw error;
 			}
 			
-			await IOUtils.write(path || attachmentPath, new Uint8Array(res.buf));
+			await IOUtils.write(path, new Uint8Array(res.buf));
 			
 			if (transfer) {
 				await Zotero.Items.erase(items.map(x => x.id));
