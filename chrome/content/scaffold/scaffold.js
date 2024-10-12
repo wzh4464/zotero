@@ -32,6 +32,12 @@ var { ContentDOMReference } = ChromeUtils.import("resource://gre/modules/Content
 var { Zotero } = ChromeUtils.importESModule("chrome://zotero/content/zotero.mjs");
 var { FilePicker } = ChromeUtils.importESModule('chrome://zotero/content/modules/filePicker.mjs');
 
+var lazy = {};
+ChromeUtils.defineLazyGetter(lazy, 'shellPathPromise', () => {
+	return Zotero.Utilities.Internal.subprocess(Services.env.get('SHELL'), ['-c', 'echo $PATH'])
+		.then(s => s.trimEnd());
+});
+
 // Fix JSON stringify 2028/2029 "bug"
 // Borrowed from http://stackoverflow.com/questions/16686687/json-stringify-and-u2028-u2029-check
 if (JSON.stringify(["\u2028\u2029"]) !== '["\\u2028\\u2029"]') {
@@ -97,6 +103,15 @@ var Scaffold = new function () {
 		});
 
 		document.getElementById('tabpanels').addEventListener('select', event => Scaffold.handleTabSelect(event));
+		document.getElementById('tabs').addEventListener('mousedown', (event) => {
+			// Record if tab selection will happen due to a mouse click vs keyboard nav.
+			if (event.clientX === 0 && event.clientY === 0) return;
+			document.getElementById('tabs').setAttribute("clicked", true);
+		}, true);
+		// Record that click has happened for better focus-ring handling in the stylesheet
+		document.addEventListener("mouseup", (_) => {
+			document.getElementById('tabs').removeAttribute("clicked");
+		});
 		
 		let lastTranslatorID = Zotero.Prefs.get('scaffold.lastTranslatorID');
 		if (lastTranslatorID) {
@@ -150,6 +165,10 @@ var Scaffold = new function () {
 		this.initImportEditor();
 		this.initCodeEditor();
 		this.initTestsEditor();
+
+		this.addEditorKeydownHandlers(_editors.import);
+		this.addEditorKeydownHandlers(_editors.code);
+		this.addEditorKeydownHandlers(_editors.tests);
 
 		// Set font size from general pref
 		Zotero.UIProperties.registerRoot(document.getElementById('scaffold-pane'));
@@ -293,6 +312,7 @@ var Scaffold = new function () {
 		monaco.languages.registerCodeLensProvider('javascript', this.createRunCodeLensProvider(monaco, editor));
 		monaco.languages.registerHoverProvider('javascript', this.createHoverProvider(monaco, editor));
 		monaco.languages.registerCompletionItemProvider('javascript', this.createCompletionProvider(monaco, editor));
+		model.onDidChangeContent(() => this.updateModelMarkers());
 
 		let tsLib = await Zotero.File.getContentsAsync(
 			PathUtils.join(Scaffold_Translators.getDirectory(), 'index.d.ts'));
@@ -563,10 +583,11 @@ var Scaffold = new function () {
 		};
 	};
 
-	this.updateModelMarkers = function (translatorPath) {
-		runESLint(translatorPath)
-			.then(eslintOutputToModelMarkers)
-			.then(markers => _editors.codeGlobal.editor.setModelMarkers(_editors.code.getModel(), 'eslint', markers));
+	this.updateModelMarkers = async function () {
+		let modelVersionId = _editors.code.getModel().getVersionId();
+		let output = await runESLint();
+		let markers = eslintOutputToModelMarkers(output, modelVersionId);
+		_editors.codeGlobal.editor.setModelMarkers(_editors.code.getModel(), 'eslint', markers);
 	};
 
 	this.setFontSize = function (size) {
@@ -737,7 +758,6 @@ var Scaffold = new function () {
 			if (mod) type -= mod;
 		}
 
-		this.updateModelMarkers(translator.path);
 		_lastModifiedTime = new Date().getTime();
 		
 		Zotero.Prefs.set('scaffold.lastTranslatorID', translator.translatorID);
@@ -804,24 +824,28 @@ var Scaffold = new function () {
 
 		return metadata;
 	}
-
-	/*
-	 * save translator to database
-	 */
-	this.save = async function (updateZotero) {
+	
+	function _getCode() {
 		var code = _editors.code.getValue();
 		var tests = _editors.tests.getValue().trim();
 		if (!tests || tests == '[]') tests = '[\n]'; // eslint wants a line break between the brackets
 
 		code = code.trimEnd() + '\n\n/** BEGIN TEST CASES **/\nvar testCases = ' + tests + '\n/** END TEST CASES **/';
+		return code;
+	}
 
+	/*
+	 * save translator to database
+	 */
+	this.save = async function (updateZotero) {
 		var metadata = _getMetadataObject();
+		var code = _getCode();
 		if (metadata.label === "Untitled") {
 			_logOutput("Can't save an untitled translator.");
 			return;
 		}
 		
-		var path = await _translatorProvider.save(metadata, code);
+		await _translatorProvider.save(metadata, code);
 		
 		if (updateZotero) {
 			await Zotero.Translators.save(metadata, code);
@@ -830,7 +854,6 @@ var Scaffold = new function () {
 
 		_lastModifiedTime = new Date().getTime();
 
-		this.updateModelMarkers(path);
 		await this.reloadTranslators();
 	};
 
@@ -854,24 +877,31 @@ var Scaffold = new function () {
 			return;
 		}
 
-		// Focus editor when switching to tab
 		var tab = document.getElementById('tabs').selectedItem.id.match(/^tab-(.+)$/)[1];
-		switch (tab) {
-			case 'import':
-			case 'code':
-			case 'tests':
-				// the select event's default behavior is to focus the selected tab.
-				// we don't want to prevent *all* of the event's default behavior,
-				// but we do want to focus the editor instead of the tab.
-				// so this stupid hack waits 10 ms for event processing to finish
-				// before focusing the editor.
-				setTimeout(() => {
-					document.getElementById(`editor-${tab}`).focus();
-					_editors[tab].focus();
-				}, 10);
-				break;
+		let tabPanel = document.getElementById("left-tabbox").selectedPanel;
+		// The select event's default behavior is to focus the selected tab.
+		// we don't want to prevent *all* of the event's default behavior,
+		// but we do want to focus an element inside of tabpanel instead of the tab
+		// (unless tabs are being navigated via keyboard)
+		// so this stupid hack focuses the desired element after skipping a tick
+		if (document.getElementById('tabs').getAttribute("clicked")) {
+			setTimeout(() => {
+				let toFocus = tabPanel.querySelector("[focus-on-tab-select]");
+				if (toFocus) {
+					toFocus.focus();
+					// activate editor that is being focused, if any
+					if (toFocus.src.includes("monaco.html")) {
+						_editors[tab].focus();
+					}
+				}
+				else {
+					// if no specific element set, just tab into the panel
+					setTimeout(() => {
+						Services.focus.moveFocus(window, document.getElementById('tabs').selectedItem, Services.focus.MOVEFOCUS_FORWARD, 0);
+					});
+				}
+			});
 		}
-
 		let codeTabBroadcaster = document.getElementById('code-tab-only');
 		if (tab == 'code') {
 			codeTabBroadcaster.removeAttribute('disabled');
@@ -896,6 +926,31 @@ var Scaffold = new function () {
 			openURL.setAttribute('disabled', true);
 		}
 	};
+
+	// Add special keydown handling for the editors
+	this.addEditorKeydownHandlers = function (editor) {
+		let doc = editor.getDomNode().ownerDocument;
+		let tabbox = document.getElementById("left-tabbox");
+		// On shift-tab from the start of the first line, tab out of the editor.
+		// Use capturing listener, since Shift-Tab keydown events do not propagate to the document.
+		doc.addEventListener("keydown", (event) => {
+			if (event.key == "Tab" && event.shiftKey) {
+				let position = editor.getPosition();
+				if (position.column == 1 && position.lineNumber == 1) {
+					Services.focus.moveFocus(window, event.target, Services.focus.MOVEFOCUS_BACKWARD, 0);
+					event.preventDefault();
+				}
+			}
+		}, true);
+		// On Escape, focus the selected tab. Use non-capturing listener to not
+		// do anything on Escape events handled by the editor (e.g. to dismiss autocomplete popup)
+		doc.addEventListener("keydown", (event) => {
+			if (event.key == "Escape") {
+				tabbox.selectedTab.focus();
+			}
+		});
+	};
+
 
 	this.listFieldsForItemType = function (itemType) {
 		var outputObject = {};
@@ -1151,9 +1206,8 @@ var Scaffold = new function () {
 	/*
 	 * called if an error occurs
 	 */
-	function _error(_obj, _error) {
-		// stub: this handler doesn't actually seem to get called by the current
-		// translation architecture when a translator throws
+	function _error(obj, error) {
+		_logOutput(String(error));
 	}
 
 	/*
@@ -1323,7 +1377,7 @@ var Scaffold = new function () {
 
 		metadata = JSON.stringify(metadata, null, "\t") + ";\n";
 
-		translator.code = metadata + "\n" + _editors.code.getValue();
+		translator.code = metadata + "\n" + _getCode();
 
 		// make sure translator gets run in browser in Zotero >2.1
 		if (Zotero.Translator.RUN_MODE_IN_BROWSER) {
@@ -1755,10 +1809,11 @@ var Scaffold = new function () {
 	 * populate tests pane and url options in browser pane
 	 */
 	this.populateTests = function () {
-		function wrapWithHBox(elem, { flex = undefined, width = undefined } = {}) {
+		function wrapWithHBox(elem, { flex, pack, width } = {}) {
 			let hbox = document.createXULElement('hbox');
 			hbox.append(elem);
 			if (flex !== undefined) hbox.setAttribute('flex', flex);
+			if (pack !== undefined) hbox.setAttribute('pack', pack);
 			if (width !== undefined) hbox.style.width = width + 'px';
 			return hbox;
 		}
@@ -1784,7 +1839,7 @@ var Scaffold = new function () {
 		for (let i = 0; i < count; i++) {
 			let item = listBox.getItemAtIndex(i);
 			let [, statusCell] = item.children;
-			oldStatuses[item.dataset.testString] = statusCell.getAttribute('value');
+			oldStatuses[item.dataset.testString] = statusCell.textContent;
 		}
 
 		let testIndex = 0;
@@ -1796,7 +1851,7 @@ var Scaffold = new function () {
 				? listBox.getItemAtIndex(testIndex)
 				: document.createXULElement('richlistitem');
 
-			item.innerHTML = ''; // clear children/content if reusing
+			item.replaceChildren();
 
 			let input = document.createXULElement('label');
 			input.append(getTestLabel(test));
@@ -1809,7 +1864,7 @@ var Scaffold = new function () {
 			let defer = document.createXULElement('checkbox');
 			defer.checked = test.defer;
 			defer.disabled = true;
-			item.appendChild(wrapWithHBox(defer, { width: 30 }));
+			item.appendChild(wrapWithHBox(defer, { pack: 'center', width: 75 }));
 
 			item.dataset.testString = testString;
 			item.dataset.testType = test.type;
@@ -2224,7 +2279,7 @@ var Scaffold = new function () {
 	}
 
 	function getDefaultESLintPath() {
-		return PathUtils.join(Scaffold_Translators.getDirectory(), 'node_modules', '.bin', 'teslint');
+		return PathUtils.join(Scaffold_Translators.getDirectory(), 'node_modules', '.bin', 'eslint');
 	}
 
 	async function getESLintPath() {
@@ -2245,7 +2300,7 @@ var Scaffold = new function () {
 				"Zotero uses ESLint to enable code suggestions and error checking, "
 					+ "but it wasn't found in the selected translators directory.\n\n"
 					+ "You can install it from the command line:\n\n"
-					+ `  cd ${Scaffold_Translators.getDirectory()}\n`
+					+ `  cd '${Scaffold_Translators.getDirectory()}'\n`
 					+ "  npm install\n\n",
 				buttonFlags,
 				"Try Again",
@@ -2263,23 +2318,45 @@ var Scaffold = new function () {
 		return eslintPath;
 	}
 
-	async function runESLint(translatorPath) {
-		if (!translatorPath) return [];
-
+	async function runESLint() {
 		let eslintPath = await getESLintPath();
 		if (!eslintPath) return [];
 
-		Zotero.debug('Running ESLint');
 		try {
-			let proc = await Subprocess.call({
+			let metadata = _getMetadataObject();
+			let code = _getCode();
+			let translatorString = _translatorProvider.stringify(metadata, code);
+			
+			let subprocessOptions = {
 				command: eslintPath,
-				arguments: ['--format', 'json', '--', translatorPath],
-			});
+				arguments: [
+					'--format',
+					'json',
+					'--stdin',
+					'--stdin-filename',
+					_translatorProvider.getSavePath(metadata)
+				],
+			};
+			
+			// ESLint needs to find node on the PATH, but macOS doesn't forward
+			// the login shell's PATH to GUI processes by default. There's a
+			// launchctl command that fixes it, but we can't expect people
+			// to do that. Pass the login shell's PATH as a workaround.
+			if (Zotero.isMac) {
+				subprocessOptions.environment = { PATH: await lazy.shellPathPromise };
+				subprocessOptions.environmentAppend = true;
+			}
+			
+			let proc = await Subprocess.call(subprocessOptions);
+			
+			await proc.stdin.write(translatorString);
+			await proc.stdin.close();
 			let lintOutput = '';
 			let chunk;
 			while ((chunk = await proc.stdout.readString())) {
 				lintOutput += chunk;
 			}
+			proc.kill(); // Shouldn't be necessary, but make sure we don't leak
 			return JSON.parse(lintOutput);
 		}
 		catch (e) {
@@ -2288,7 +2365,7 @@ var Scaffold = new function () {
 		return [];
 	}
 
-	function eslintOutputToModelMarkers(output) {
+	function eslintOutputToModelMarkers(output, modelVersionId) {
 		let result = output[0];
 		if (!result) return [];
 
@@ -2300,9 +2377,8 @@ var Scaffold = new function () {
 			message: message.message,
 			severity: message.severity * 4,
 			source: 'ESLint',
-			tags: [
-				message.ruleId || '-'
-			]
+			code: message.ruleId,
+			modelVersionId,
 		}));
 	}
 

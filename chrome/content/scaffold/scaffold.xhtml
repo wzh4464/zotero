@@ -354,21 +354,25 @@
 				titlebar-btn="min"
 				oncommand="window.minimize();"
 				data-l10n-id="browser-window-minimize-button"
+				aria-hidden="true"
 				/>
 			<toolbarbutton class="titlebar-button titlebar-max"
 				titlebar-btn="max"
 				oncommand="window.maximize();"
 				data-l10n-id="browser-window-maximize-button"
+				aria-hidden="true"
 				/>
 			<toolbarbutton class="titlebar-button titlebar-restore"
 				titlebar-btn="max"
 				oncommand="window.fullScreen ? BrowserFullScreen() : window.restore();"
 				data-l10n-id="browser-window-restore-down-button"
+				aria-hidden="true"
 				/>
 			<toolbarbutton class="titlebar-button titlebar-close"
 				titlebar-btn="close"
 				oncommand="window.close();"
 				data-l10n-id="browser-window-close-button"
+				aria-hidden="true"
 				/>
 		</hbox>
 	</vbox>
@@ -464,7 +468,7 @@
 					</tabpanel>
 					<tabpanel flex="1" id="tabpanel-code">
 						<vbox flex="1">
-							<iframe src="monaco/monaco.html" id="editor-code" flex="1" onmousedown="this.focus()"/>
+							<iframe src="monaco/monaco.html" id="editor-code" focus-on-tab-select="true" flex="1" onmousedown="this.focus()"/>
 						</vbox>
 					</tabpanel>
 					<tabpanel flex="1" id="tabpanel-tests">
@@ -477,7 +481,7 @@
 								<listheader>
 									<treecol label="&scaffold.testing.input.label;" flex="1"/>
 									<treecol label="&scaffold.testing.status.label;" width="150"/>
-									<treecol label="&scaffold.testing.defer.label;"/>
+									<treecol label="&scaffold.testing.defer.label;" width="75"/>
 								</listheader>
 								<richlistbox
 									id="testing-listbox"
@@ -486,6 +490,7 @@
 									seltype="multiple"
 									onselect="Scaffold.handleTestSelect(event)"
 									context="testing-context-menu"
+									focus-on-tab-select="true"
 								/>
 							</vbox>
 							<hbox id="testing-buttons">
@@ -529,7 +534,7 @@
 								<button observes="validate-tests" label="&scaffold.testing.create.import;" tooltiptext="Create a new test from the current import data" oncommand="Scaffold.saveTestFromCurrent('import')" />
 								<button observes="validate-tests" label="&scaffold.testing.create.search;" tooltiptext="Create a new test from the current search data" oncommand="Scaffold.saveTestFromCurrent('search')" />
 							</hbox>
-							<iframe src="monaco/monaco.html" id="editor-import" flex="1" onmousedown="this.focus()"/>
+							<iframe src="monaco/monaco.html" id="editor-import" flex="1" focus-on-tab-select="true" onmousedown="this.focus()"/>
 						</vbox>
 					</tabpanel>
 				</tabpanels>

@@ -818,18 +818,22 @@
 			<toolbarbutton class="titlebar-button titlebar-min"
 				oncommand="window.minimize();"
 				data-l10n-id="browser-window-minimize-button"
+				aria-hidden="true"
 				/>
 			<toolbarbutton class="titlebar-button titlebar-max"
 				oncommand="window.maximize();"
 				data-l10n-id="browser-window-maximize-button"
+				aria-hidden="true"
 				/>
 			<toolbarbutton class="titlebar-button titlebar-restore"
 				oncommand="window.fullScreen ? BrowserFullScreen() : window.restore();"
 				data-l10n-id="browser-window-restore-down-button"
+				aria-hidden="true"
 				/>
 			<toolbarbutton class="titlebar-button titlebar-close"
 				oncommand="window.close();"
 				data-l10n-id="browser-window-close-button"
+				aria-hidden="true"
 				/>
 		</hbox>
 	</vbox>
@@ -961,6 +965,7 @@
 			<menuitem class="menuitem-iconic zotero-menuitem-find-pdf" oncommand="ZoteroPane.findFilesForSelectedItems()"/>
 			<menuseparator/>
 			<menuitem class="menuitem-iconic zotero-menuitem-toggle-read-item" oncommand="ZoteroPane_Local.toggleSelectedItemsRead();"/>
+			<menuitem class="menuitem-iconic zotero-menuitem-change-top-level-item" data-l10n-id="item-menu-change-parent-item" oncommand="ZoteroPane_Local.changeParentItem();"/>
 			<menu class="menu-iconic zotero-menuitem-add-to-collection">
 				<menupopup id="zotero-add-to-collection-popup" onpopupshowing="ZoteroPane_Local.buildAddToCollectionMenu(event)">
 					<menuitem id="zotero-add-to-new-collection" label="&zotero.toolbar.newCollection.label;" oncommand="ZoteroPane_Local.addSelectedItemsToCollection(null, true)"/>

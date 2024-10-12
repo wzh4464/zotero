@@ -16,6 +16,9 @@ general-tag = Tag
 general-done = Done
 general-view-troubleshooting-instructions = View Troubleshooting Instructions
 
+citation-style-label = Citation Style:
+language-label = Language:
+
 menu-file-show-in-finder =
     .label = Show in Finder
 menu-file-show-file =
@@ -119,6 +122,8 @@ item-menu-add-linked-file =
      .label = Linked File
 item-menu-add-url =
      .label = Web Link
+item-menu-change-parent-item =
+     .label = Change Parent Item…
 
 view-online = View Online
 item-menu-option-view-online =
@@ -276,8 +281,8 @@ runJS-run-async = Run as async function
 
 bibliography-window =
     .title = { -app-name } - Create Citation/Bibliography
-bibliography-style-label = Citation Style:
-bibliography-locale-label = Language:
+bibliography-style-label = { citation-style-label }
+bibliography-locale-label = { language-label }
 bibliography-displayAs-label = Display citations as:
 bibliography-advancedOptions-label = Advanced Options
 bibliography-outputMode-label = Output Mode:
@@ -310,6 +315,16 @@ integration-editBibliography-window =
     .title = { -app-name } - Edit Bibliography
 integration-quickFormatDialog-window =
     .title = { -app-name } - Quick Format Citation
+
+styleEditor-locatorType =
+    .aria-label = Locator type
+styleEditor-locatorInput = Locator input
+styleEditor-citationStyle = { citation-style-label }
+styleEditor-locale = { language-label }
+styleEditor-editor = 
+    .aria-label = Style editor
+styleEditor-preview = 
+    .aria-label = Preview
 
 integration-prefs-displayAs-label = Display Citations As:
 integration-prefs-footnotes = 
@@ -615,6 +630,12 @@ item-pane-message-unselected = { $count ->
    *[other] { $count } items in this view
 }
 
+item-pane-message-objects-unselected = { $count ->
+    [0] No objects in this view
+    [one] { $count } object in this view
+   *[other] { $count } objects in this view
+}
+
 item-pane-duplicates-merge-items =
     .label = { $count ->
          [one] Merge { $count } item
@@ -657,6 +678,11 @@ find-pdf-files-added = { $count ->
 
 select-items-dialog =
     .buttonlabelaccept = Select
+select-items-convertToStandaloneAttachment =
+    .label = { $count ->
+        [one] Convert to Standalone Attachment
+        *[other] Convert to Standalone Attachments
+}
 
 file-type-webpage = Webpage
 file-type-image = Image
