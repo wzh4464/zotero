@@ -1,10 +1,20 @@
-general-print = Print
+general-key-control = Control
+general-key-shift = Shift
+general-key-alt = Alt
+general-key-option = Option
+general-key-command = Command
+option-or-alt =
+    { PLATFORM() ->
+        [macos] { general-key-option }
+        *[other] { general-key-alt }
+    }
 return-or-enter =
     { PLATFORM() ->
         [macos] Return
         *[other] Enter
     }
 
+general-print = Print
 general-remove = Remove
 general-add = Add
 general-remind-me-later = Remind Me Later
@@ -87,6 +97,10 @@ collections-menu-rename-collection =
     .label = Rename Collection
 collections-menu-edit-saved-search =
     .label = Edit Saved Search
+collections-menu-move-collection =
+    .label = Move To
+collections-menu-copy-collection =
+    .label = Copy To
 
 item-creator-moveDown =
     .label = Move Down
@@ -678,10 +692,17 @@ find-pdf-files-added = { $count ->
 
 select-items-dialog =
     .buttonlabelaccept = Select
+select-items-convertToStandalone =
+    .label = Convert to Standalone
 select-items-convertToStandaloneAttachment =
     .label = { $count ->
         [one] Convert to Standalone Attachment
         *[other] Convert to Standalone Attachments
+}
+select-items-convertToStandaloneNote =
+    .label = { $count ->
+        [one] Convert to Standalone Note
+        *[other] Convert to Standalone Notes
 }
 
 file-type-webpage = Webpage

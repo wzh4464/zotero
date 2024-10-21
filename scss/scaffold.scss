@@ -34,6 +34,17 @@ $scaffold-toolbarbutton-icons: (
 	@include contain-richlistbox;
 }
 
+#zotero-select-item-dialog {
+	max-width: 400px;
+	max-height: 330px;
+	@include contain-richlistbox;
+}
+
+// Prevent contain-richlistbox from squishing the buttons
+#zotero-select-items-buttons {
+	flex-shrink: 0;
+}
+
 .menubar-container {
 	display: flex;
 	background: var(--material-sidepane);
@@ -212,10 +223,4 @@ browser,
 			margin: 0;
 		}
 	}
-}
-
-// show focusring only during keyboard navigation
-#tabs:not([clicked]) tab:focus-visible {
-	outline: none;
-	box-shadow: 0 0 0 var(--width-focus-border) var(--color-focus-border);
 }

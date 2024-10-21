@@ -59,6 +59,7 @@ Var InstallType
 !insertmacro WordFind
 !insertmacro WordReplace
 
+!include nsProcess.nsh
 ; The following includes are custom.
 !include branding.nsi
 !include defines.nsi
@@ -217,26 +218,27 @@ Function UninstallOld
     ${GetFileName} $3 $4
     StrCpy $5 $4 6
     StrCmp $5 "Zotero" +1 continue_installation
-    RMDir /r /REBOOTOK "$3\chrome"
-    RMDir /r /REBOOTOK "$3\components"
-    RMDir /r /REBOOTOK "$3\defaults"
-    RMDir /r /REBOOTOK "$3\dictionaries"
-    RMDir /r /REBOOTOK "$3\extensions"
-    RMDir /r /REBOOTOK "$3\fonts"
-    RMDir /r /REBOOTOK "$3\gmp-clearkey"
-    RMDir /r /REBOOTOK "$3\uninstall"
-    RMDir /r /REBOOTOK "$3\xulrunner"
-    Delete /REBOOTOK "$3\*.chk"
-    Delete /REBOOTOK "$3\*.dll"
-    Delete /REBOOTOK "$3\*.exe"
-    Delete /REBOOTOK "$3\Accessible.tlb"
-    Delete /REBOOTOK "$3\dependentlibs.list"
-    Delete /REBOOTOK "$3\firefox.VisualElementsManifest.xml"
-    Delete /REBOOTOK "$3\omni.ja"
-    Delete /REBOOTOK "$3\platform.ini"
-    Delete /REBOOTOK "$3\precomplete"
-    Delete /REBOOTOK "$3\voucher.bin"
+    RMDir /r "$3\chrome"
+    RMDir /r "$3\components"
+    RMDir /r "$3\defaults"
+    RMDir /r "$3\dictionaries"
+    RMDir /r "$3\extensions"
+    RMDir /r "$3\fonts"
+    RMDir /r "$3\gmp-clearkey"
+    RMDir /r "$3\uninstall"
+    RMDir /r "$3\xulrunner"
+    Delete "$3\*.chk"
+    Delete "$3\*.dll"
+    Delete "$3\*.exe"
+    Delete "$3\Accessible.tlb"
+    Delete "$3\dependentlibs.list"
+    Delete "$3\firefox.VisualElementsManifest.xml"
+    Delete "$3\omni.ja"
+    Delete "$3\platform.ini"
+    Delete "$3\precomplete"
+    Delete "$3\voucher.bin"
     RMDir $3
+
   continue_installation:
     ; End uninstallation
     SetShellVarContext current
@@ -616,19 +618,33 @@ Function AddQuickLaunchShortcut
 FunctionEnd
 
 Function CheckExistingInstall
+  UserInfo::GetAccountType
+  pop $0 ; $0 = "Admin" or "User" or "Guest". This is the account type.
+
   ; If there is a pending file copy from a previous upgrade don't allow
   ; installing until after the system has rebooted.
-  IfFileExists "$INSTDIR\${FileMainEXE}.moz-upgrade" +1 +4
-  MessageBox MB_YESNO|MB_ICONEXCLAMATION "$(WARN_RESTART_REQUIRED_UPGRADE)" IDNO +2
-  Reboot
-  Quit
+  ${If} ${FileExists} "$INSTDIR\${FileMainEXE}.moz-upgrade"
+    StrCmp $0 "Admin" +1 +4
+    MessageBox MB_YESNO|MB_ICONEXCLAMATION "$(WARN_RESTART_REQUIRED_UPGRADE)" IDNO +2
+    Reboot
+    Quit
+    ; Non-admins cannot depend on files being removed on restart. 
+    ; Our only option is to remove these files and continue with the installation.
+    Delete "$INSTDIR\${FileMainEXE}.moz-upgrade"
+    Delete "$INSTDIR\${FileMainEXE}"
+  ${EndIf}
 
   ; If there is a pending file deletion from a previous uninstall don't allow
   ; installing until after the system has rebooted.
-  IfFileExists "$INSTDIR\${FileMainEXE}.moz-delete" +1 +4
-  MessageBox MB_YESNO|MB_ICONEXCLAMATION "$(WARN_RESTART_REQUIRED_UNINSTALL)" IDNO +2
-  Reboot
-  Quit
+  ${If} ${FileExists} "$INSTDIR\${FileMainEXE}.moz-delete"
+    StrCmp $0 "Admin" +1 +4
+    MessageBox MB_YESNO|MB_ICONEXCLAMATION "$(WARN_RESTART_REQUIRED_UNINSTALL)" IDNO +2
+    Reboot
+    Quit
+    ; Non-admins cannot depend on files being removed on restart.
+    Delete "$INSTDIR\${FileMainEXE}.moz-delete"
+    Delete "$INSTDIR\${FileMainEXE}"
+  ${EndIf}
 
   ${If} ${FileExists} "$INSTDIR\${FileMainEXE}"
     ; Disable the next, cancel, and back buttons
@@ -949,6 +965,21 @@ Function .onInit
       Quit
     ${EndIf}
   !endif
+
+  # Check if Zotero is running. If it is, prompt the user to close Zotero and exit.
+  # For silent installs, kill Zotero and if successful, continue with the install.
+  ${nsProcess::FindProcess} ${FileMainEXE} $R0
+  ${If} $R0 = 0
+    IfSilent +3
+    MessageBox MB_OK|MB_ICONSTOP "Zotero is already running. Please close Zotero before running the installer."
+    Quit
+    ${nsProcess::KillProcess} ${FileMainEXE} $R0
+    Sleep 500
+    ${nsProcess::FindProcess} ${FileMainEXE} $R0
+    ${If} $R0 = 0
+      Quit
+    ${EndIf}
+  ${EndIf}
 
   StrCpy $R1 "Zotero Standalone"
   StrCpy $R2 "An older version of Zotero is installed. If you continue, the existing version will be removed.$\n$\nYour Zotero data will not be affected."
