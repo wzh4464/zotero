@@ -596,8 +596,8 @@ var Scaffold = new function () {
 		_editors.code.updateOptions({ fontSize: size + 1 });
 		_editors.tests.updateOptions({ fontSize: size + 1 });
 		document.getElementById("scaffold-pane").style.fontSize = sizeWithPX;
-		if (size == 11) {
-			// for the default value 11, clear the prefs
+		if (size == 13) {
+			// for the default value 13, clear the prefs
 			Zotero.Prefs.clear('scaffold.fontSize');
 		}
 		else {
@@ -606,11 +606,11 @@ var Scaffold = new function () {
 	};
 
 	this.increaseFontSize = function () {
-		var currentSize = Zotero.Prefs.get("scaffold.fontSize") || 11;
+		var currentSize = Zotero.Prefs.get("scaffold.fontSize") || 13;
 		this.setFontSize(currentSize + 2);
 	};
 	this.decreaseFontSize = function () {
-		var currentSize = Zotero.Prefs.get("scaffold.fontSize") || 11;
+		var currentSize = Zotero.Prefs.get("scaffold.fontSize") || 13;
 		this.setFontSize(currentSize - 2);
 	};
 
@@ -942,13 +942,6 @@ var Scaffold = new function () {
 				}
 			}
 		}, true);
-		// On Escape, focus the selected tab. Use non-capturing listener to not
-		// do anything on Escape events handled by the editor (e.g. to dismiss autocomplete popup)
-		doc.addEventListener("keydown", (event) => {
-			if (event.key == "Escape") {
-				tabbox.selectedTab.focus();
-			}
-		});
 	};
 
 
