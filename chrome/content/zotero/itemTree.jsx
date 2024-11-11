@@ -978,6 +978,30 @@ var ItemTree = class ItemTree extends LibraryTree {
 			this.collapseAllRows();
 			return false;
 		}
+		// On arrowUp/down without modifiers in duplicates view, select the entire set
+		else if (this.collectionTreeRow.isDuplicates() && ["ArrowUp", "ArrowDown"].includes(event.key)
+				&& !event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey) {
+			// Find the first row outside of the current consecutive set of rows
+			let findNextRow = index => (event.key == "ArrowUp" ? index - 1 : index + 1);
+			let nextRowIndex = findNextRow(this.selection.focused);
+			while (this.selection.selected.has(nextRowIndex)) {
+				nextRowIndex = findNextRow(nextRowIndex);
+			}
+			if (nextRowIndex < 0 || nextRowIndex > this._rows.length - 1) return false;
+			// Set that row as focused and select its item as the next set of duplicates
+			let nextItem = this._rows[nextRowIndex].ref;
+			var setItemIDs = this.collectionTreeRow.ref.getSetItemsByItemID(nextItem.id);
+			this.selection.focused = nextRowIndex;
+			
+			this.selectItems(setItemIDs, false, true).then(() => {
+				// make sure the focused row is visible
+				if (!this.tree.rowIsVisible(nextRowIndex)) {
+					this.ensureRowIsVisible(nextRowIndex);
+				}
+			});
+			
+			return false;
+		}
 		return true;
 	}
 
@@ -1134,7 +1158,7 @@ var ItemTree = class ItemTree extends LibraryTree {
 		return this.selectItems([id], noRecurse);
 	}
 	
-	async selectItems(ids, noRecurse) {
+	async selectItems(ids, noRecurse, noScroll) {
 		if (!ids.length) return 0;
 		
 		// If no row map, we're probably in the process of switching collections,
@@ -1256,8 +1280,9 @@ var ItemTree = class ItemTree extends LibraryTree {
 			
 			this.selection.selectEventsSuppressed = false;
 		}
-		
-		this.ensureRowsAreVisible(rowsToSelect);
+		if (!noScroll) {
+			this.ensureRowsAreVisible(rowsToSelect);
+		}
 		
 		return rowsToSelect.length;
 	}
