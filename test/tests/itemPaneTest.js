@@ -236,7 +236,7 @@ describe("Item pane", function () {
 			var item = new Zotero.Item('book');
 			var id = yield item.saveTx();
 			
-			var itemBox = doc.getElementById('zotero-editpane-item-box');
+			var itemBox = doc.getElementById('zotero-editpane-info-box');
 			var label = itemBox.querySelectorAll('[fieldname="series"]')[1];
 			assert.equal(label.value, '');
 			
@@ -261,7 +261,7 @@ describe("Item pane", function () {
 			]);
 			await item.saveTx();
 			
-			var itemBox = doc.getElementById('zotero-editpane-item-box');
+			var itemBox = doc.getElementById('zotero-editpane-info-box');
 			var lastName = itemBox.querySelector('#itembox-field-value-creator-0-lastName');
 			var parent = lastName.closest(".creator-type-value");
 			assert.property(parent, 'oncontextmenu');
@@ -293,10 +293,15 @@ describe("Item pane", function () {
 			]);
 			await item.saveTx();
 			
-			var itemBox = doc.getElementById('zotero-editpane-item-box');
+			var itemBox = doc.getElementById('zotero-editpane-info-box');
 			var label = itemBox.querySelector('#itembox-field-value-creator-0-lastName');
 			var firstlast = label.closest('.creator-type-value');
-			firstlast.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, button: 2 }));
+			var menupopup = itemBox.querySelector('#zotero-creator-transform-menu');
+			// Fake a right-click
+			doc.popupNode = firstlast;
+			menupopup.openPopup(
+				firstlast, "after_start", 0, 0, true, false, new MouseEvent('click', { button: 2 })
+			);
 			
 			var menuitem = doc.getElementById('creator-transform-swap-names');
 			assert.isTrue(menuitem.hidden);
@@ -320,7 +325,7 @@ describe("Item pane", function () {
 			]);
 			await item.saveTx();
 			
-			var itemBox = doc.getElementById('zotero-editpane-item-box');
+			var itemBox = doc.getElementById('zotero-editpane-info-box');
 			// Move One to the last spot
 			itemBox.moveCreator(0, null, 3);
 			await waitForItemEvent('modify');
@@ -364,7 +369,7 @@ describe("Item pane", function () {
 			]);
 			var id = yield item.saveTx();
 			
-			var itemBox = doc.getElementById('zotero-editpane-item-box');
+			var itemBox = doc.getElementById('zotero-editpane-info-box');
 			var label = itemBox.querySelector('[fieldname="place"]');
 			label.click();
 			var textbox = itemBox.querySelector('[fieldname="place"]');
@@ -387,7 +392,7 @@ describe("Item pane", function () {
 		it("should accept 'now' for Accessed", async function () {
 			var item = await createDataObject('item');
 			
-			var itemBox = doc.getElementById('zotero-editpane-item-box');
+			var itemBox = doc.getElementById('zotero-editpane-info-box');
 			var textbox = itemBox.querySelector('[fieldname="accessDate"]');
 			textbox.value = 'now';
 			// Blur events don't necessarily trigger if window doesn't have focus
@@ -413,7 +418,7 @@ describe("Item pane", function () {
 			]);
 			await item.saveTx();
 			
-			let itemBox = doc.getElementById('zotero-editpane-item-box');
+			let itemBox = doc.getElementById('zotero-editpane-info-box');
 
 			itemBox.querySelector('[fieldname="creator-0-lastName"]').click();
 			itemBox.hideEditor(itemBox.querySelector('input[fieldname="creator-0-lastName"]'));
@@ -443,7 +448,7 @@ describe("Item pane", function () {
 			let promise = waitForItemEvent('modify');
 			item.saveTx();
 			await promise;
-			var itemBox = doc.getElementById('zotero-editpane-item-box');
+			var itemBox = doc.getElementById('zotero-editpane-info-box');
 			let creatorLastName = itemBox.querySelector(".creator-type-value editable-text");
 			creatorLastName.focus();
 			// Dispatch shift-Enter event
@@ -473,7 +478,7 @@ describe("Item pane", function () {
 			let promise = waitForItemEvent('modify');
 			item.saveTx();
 			await promise;
-			var itemBox = doc.getElementById('zotero-editpane-item-box');
+			var itemBox = doc.getElementById('zotero-editpane-info-box');
 			let creatorLastName = itemBox.querySelector(".creator-type-value editable-text");
 			creatorLastName.focus();
 			// Dispatch shift-Enter event
@@ -511,7 +516,7 @@ describe("Item pane", function () {
 			item.setCreators(creatorsArr);
 			item.saveTx();
 			await waitForItemEvent('modify');
-			var itemBox = doc.getElementById('zotero-editpane-item-box');
+			var itemBox = doc.getElementById('zotero-editpane-info-box');
 			let moreCreatorsLabel = itemBox.querySelector("#more-creators-label");
 			let lastVisibleCreator = moreCreatorsLabel.closest(".meta-row").previousElementSibling;
 			let lastVisibleCreatorsPosition = itemBox.getCreatorFields(lastVisibleCreator).position;
@@ -548,7 +553,7 @@ describe("Item pane", function () {
 			item.setCreators(creatorsArr);
 			item.saveTx();
 			await waitForItemEvent('modify');
-			var itemBox = doc.getElementById('zotero-editpane-item-box');
+			var itemBox = doc.getElementById('zotero-editpane-info-box');
 			// Add a new empty creator row
 			itemBox.querySelector(".zotero-clicky-plus").click();
 			await Zotero.Promise.delay();
@@ -581,7 +586,7 @@ describe("Item pane", function () {
 			let modifyPromise = waitForItemEvent('modify');
 			item.saveTx();
 			await modifyPromise;
-			var itemBox = doc.getElementById('zotero-editpane-item-box');
+			var itemBox = doc.getElementById('zotero-editpane-info-box');
 			// Click on the button to switch type to dual
 			let switchTypeBtn = itemBox.querySelector(".zotero-clicky-switch-type");
 			assert.equal(switchTypeBtn.getAttribute("type"), "single");
@@ -1253,6 +1258,90 @@ describe("Item pane", function () {
 
 			win.resizeTo(null, height);
 			attachmentsBox._discardPreviewTimeout = currentDiscardTimeout;
+		});
+
+		it("should update after attachment is trashed or restored", async function () {
+			// https://github.com/zotero/zotero/issues/4770
+
+			let itemDetails = ZoteroPane.itemPane._itemDetails;
+			let attachmentsBox = itemDetails.getPane(paneID);
+
+			let item = await createDataObject('item');
+			let attachment = await importFileAttachment('test.pdf', { parentID: item.id });
+
+			function getAttachmentRow() {
+				return attachmentsBox.querySelector(`attachment-row[attachment-id="${attachment.id}"]`);
+			}
+
+			await ZoteroPane.selectItem(item.id);
+			await waitForScrollToPane(itemDetails, paneID);
+			await waitForPreviewBoxRender(attachmentsBox);
+
+			// Trash the attachment
+			let trashPromise = waitForNotifierEvent('trash', 'item');
+			await Zotero.Items.trashTx([attachment.id]);
+			await trashPromise;
+
+			// Wait for the attachment row to be hidden
+			await waitForCallback(
+				() => getAttachmentRow().hidden
+				, 100, 3);
+			assert.isTrue(getAttachmentRow().hidden);
+
+			// Restore the attachment
+			let restorePromise = waitForNotifierEvent('modify', 'item');
+			attachment.deleted = false;
+			await attachment.saveTx();
+			await restorePromise;
+
+			// Wait for the attachment row to exist and be visible
+			await waitForCallback(
+				() => getAttachmentRow()?.hidden === false
+				, 100, 3);
+			assert.exists(getAttachmentRow());
+			assert.isFalse(getAttachmentRow().hidden);
+
+			// Basically, our item pane render mechanism will reuse the previous render if the item
+			// is the same. We want to ensure the attachments box is rerendered after
+			// the attachments' trash/restore, even if it's already rendered with the same item.
+			trashPromise = waitForNotifierEvent('trash', 'item');
+			await Zotero.Items.trashTx([attachment.id]);
+			await trashPromise;
+
+			// Wait for the attachment row to be hidden
+			await waitForCallback(
+				() => getAttachmentRow().hidden
+				, 100, 3);
+
+			// Select another non-regular item to ensure the box is not updated by notifier events
+			// At this point, the box still has the previous render with attachment row hidden
+			let item2 = await createDataObject('item');
+			let attachment2 = await importFileAttachment('test.pdf', { parentID: item2.id });
+			await ZoteroPane.selectItem(attachment2.id);
+			await waitForPreviewBoxRender(itemDetails.getPane("attachment-info"));
+
+			// Restore the attachment
+			restorePromise = waitForNotifierEvent('modify', 'item');
+			attachment.deleted = false;
+			await attachment.saveTx();
+			await restorePromise;
+
+			// Select the item with the restored attachment. A rerender should be triggered
+			await ZoteroPane.selectItem(item.id);
+			await waitForScrollToPane(itemDetails, paneID);
+			await waitForPreviewBoxRender(attachmentsBox);
+
+			// Wait for the attachment row to exist and be visible
+			await waitForCallback(
+				() => {
+					let row = getAttachmentRow();
+					window.console.log(row);
+					return row && !row.hidden;
+				}
+				, 100, 3);
+
+			// Should render the attachment row, as the render dependency is different
+			assert.exists(getAttachmentRow());
 		});
 	});
 	
