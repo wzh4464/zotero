@@ -217,7 +217,6 @@
 			this.addEventListener('click', this.handleButtonClick);
 			this.addEventListener('keydown', this.handleKeyDown);
 			this.addEventListener('focusin', this.handleFocusIn);
-			this.addEventListener('mousedown', this.handleMouseDown);
 			// Set up action toolbarbuttons
 			for (let toolbarbutton of this.querySelectorAll('toolbarbutton[data-action]')) {
 				let action = toolbarbutton.dataset.action;
@@ -250,7 +249,6 @@
 			this.removeEventListener('click', this.handleButtonClick);
 			this.removeEventListener('keydown', this.handleKeyDown);
 			this.removeEventListener('focusin', this.handleFocusIn);
-			this.removeEventListener('mousedown', this.handleMouseDown);
 		}
 
 		render() {
@@ -388,19 +386,17 @@
 		handleKeyDown = (event) => {
 			if (event.key == "Tab" && !event.shiftKey) {
 				// Wrap focus around to the tab bar
-				Services.focus.moveFocus(window, document.getElementById("zotero-title-bar"), Services.focus.MOVEFOCUS_FORWARD, 0);
+				Zotero_Tabs.moveFocus("current");
 				event.preventDefault();
 			}
 			if (event.key == "Tab" && event.shiftKey) {
-				if (this._contextNotesPaneVisible) {
-					// Tab into notes pane to focus search bar
-					Services.focus.moveFocus(window, this._contextNotesPane, Services.focus.MOVEFOCUS_FORWARD, 0);
-				}
-				else {
-					// Shift-Tab out of sidenav to itemPane
-					Services.focus.moveFocus(window, this, Services.focus.MOVEFOCUS_BACKWARD, 0);
-				}
 				event.preventDefault();
+				if (this._contextNotesPaneVisible && this._contextNotesPane.selectedPanel.mode == "notesList") {
+					let focusHandled = this._contextNotesPane.selectedPanel.notesList.refocusLastFocusedNote();
+					if (focusHandled) return;
+				}
+				// Shift-Tab out of sidenav to itemPane
+				Services.focus.moveFocus(window, this, Services.focus.MOVEFOCUS_BACKWARD, 0);
 			}
 			if (["ArrowUp", "ArrowDown"].includes(event.key)) {
 				// Up/Down arrow navigation
@@ -457,7 +453,7 @@
 		handleFocusIn = (event) => {
 			let focusedTab = event.target.getAttribute("role") == "tab";
 			
-			for (let node of [...this.querySelectorAll("[tabindex]")]) {
+			for (let node of this.querySelectorAll("[tabindex]")) {
 				let isTab = node.getAttribute("role") == "tab";
 				if (focusedTab) {
 					node.setAttribute("aria-hidden", !isTab);
@@ -466,11 +462,10 @@
 					node.setAttribute("aria-hidden", isTab);
 				}
 			}
-		};
-
-		// Prevents focus from leaving the currently focused element and landing on the sidenav buttons
-		handleMouseDown = (event) => {
-			event.preventDefault();
+			
+			if (Services.focus.getLastFocusMethod(window) & Services.focus.FLAG_BYMOUSE) {
+				event.relatedTarget?.focus();
+			}
 		};
 
 		handleButtonClick = (event) => {

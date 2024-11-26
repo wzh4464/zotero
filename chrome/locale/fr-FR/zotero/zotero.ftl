@@ -24,7 +24,7 @@ general-help = ?
 general-tag = Marqueur
 general-done = Terminé
 general-view-troubleshooting-instructions = Afficher les instructions de dépannage
-general-go-back = Go Back
+general-go-back = Revenir en arrière
 citation-style-label = Style de citation :
 language-label = Langue :
 menu-file-show-in-finder =
@@ -66,11 +66,13 @@ menu-deletePermanently =
 menu-tools-plugins =
     .label = Extensions
 menu-view-columns-move-left =
-    .label = Move Column Left
+    .label = Déplacer la colonne à gauche
 menu-view-columns-move-right =
-    .label = Move Column Right
+    .label = Déplacer la colonne à droite
 main-window-command =
-    .label = { -app-name }
+    .label = Library
+main-window-key =
+    .key = L
 zotero-toolbar-tabs-menu =
     .tooltiptext = Lister tous les onglets
 filter-collections = Filtrer les collections
@@ -195,7 +197,7 @@ import-online-intro = A l'étape suivante, il vous sera demandé de vous connect
 import-online-intro2 = { -app-name } ne verra ni n'enregistrera jamais votre mot de passe { $targetApp }.
 import-online-form-intro = Veuillez entrer vos informations de connexion à { $targetAppOnline }. Cette autorisation est nécessaire pour importer votre bibliothèque { $targetApp } dans { -app-name }.
 import-online-wrong-credentials = Connexion à { $targetApp } refusée. Veuillez vérifier vos informations de connexion et réessayer.
-import-online-blocked-by-plugin = L'importation ne peut pas aboutir avec { $plugin } installé. Veuillez désactiver cette extension et réessayer.
+import-online-blocked-by-plugin = L'importation ne peut pas aboutir avec l'extension { $plugin } installée. Veuillez désactiver cette extension et réessayer.
 import-online-relink-only =
     .label = Lier à nouveau les citations de Mendeley Desktop
 import-online-relink-kb = Plus d'informations
@@ -283,12 +285,12 @@ integration-editBibliography-add-button =
 integration-editBibliography-remove-button =
     .aria-label = { general-remove }
 integration-editBibliography-editor =
-    .aria-label = Edit reference
--integration-editBibliography-include-uncited = To include an uncited item in your bibliography, select it from the items list and press { general-add }.
--integration-editBibliography-exclude-cited = You can also exclude a cited item by selecting it from the list of references and pressing { general-remove }.
--integration-editBibliography-edit-reference = To change how a reference is formatted, use the text editor.
+    .aria-label = Modifier la référence
+-integration-editBibliography-include-uncited = Pour intégrer dans votre bibliographie un document non cité, sélectionnez-le depuis la liste des documents et cliquez sur { general-add }.
+-integration-editBibliography-exclude-cited = Vous pouvez également exclure un document cité en le sélectionnant depuis la liste des documents et en cliquant sur { general-remove }.
+-integration-editBibliography-edit-reference = Pour modifier la mise en forme d'une référence, utilisez l'éditeur de texte.
 integration-editBibliography-wrapper =
-    .aria-label = Edit Bibliography dialog
+    .aria-label = Fenêtre d'édition de la bibliographie
     .aria-description =
         { -integration-editBibliography-include-uncited }
         { -integration-editBibliography-exclude-cited }
@@ -390,7 +392,7 @@ menu-ui-density-comfortable =
     .label = Confortable
 menu-ui-density-compact =
     .label = Compact
-pane-item-details = Item Details
+pane-item-details = Détails du document
 pane-info = Info
 pane-abstract = Résumé
 pane-attachments = Fichiers joints
@@ -650,7 +652,7 @@ find-pdf-files-added =
 select-items-dialog =
     .buttonlabelaccept = Sélectionner
 select-items-convertToStandalone =
-    .label = Convert to Standalone
+    .label = Convertir en document indépendant
 select-items-convertToStandaloneAttachment =
     .label =
         { $count ->
@@ -661,8 +663,9 @@ select-items-convertToStandaloneAttachment =
 select-items-convertToStandaloneNote =
     .label =
         { $count ->
-            [one] Convert to Standalone Note
-           *[other] Convert to Standalone Notes
+            [one] Convertir en note indépendante
+            [many] Convertir en notes indépendantes
+           *[other] Convertir en notes indépendantes
         }
 file-type-webpage = Page web
 file-type-image = Image
@@ -680,9 +683,9 @@ post-upgrade-done =
     .label = { general-done }
 text-action-paste-and-search =
     .label = Coller et rechercher
-mac-word-plugin-install-message = Zotero doit avoir accès aux données de Word pour installer le module Word
+mac-word-plugin-install-message = Zotero doit avoir accès aux données de Word pour installer l'extension Word.
 mac-word-plugin-install-action-button =
-    .label = Installer le module Word
+    .label = Installer l'extension Word
 mac-word-plugin-install-remind-later-button =
     .label = { general-remind-me-later }
 mac-word-plugin-install-dont-ask-again-button =
