@@ -5015,7 +5015,14 @@ var ZoteroPane = new function()
 				);
 				return;
 			}
-			let fileExists = await IOUtils.exists(path);
+			let fileExists;
+			try {
+				fileExists = await IOUtils.exists(path);
+			}
+			catch (e) {
+				Zotero.logError(e);
+				fileExists = false;
+			}
 			
 			// If the file is an evicted iCloud Drive file, launch that to trigger a download.
 			// As of 10.13.6, launching an .icloud file triggers the download and opens the
@@ -5652,7 +5659,9 @@ var ZoteroPane = new function()
 			this.displayCannotEditLibraryMessage();
 			return;
 		}
-		await Zotero.PDFWorker.import(attachment.id, true);
+		if (attachment.isPDFAttachment()) {
+			await Zotero.PDFWorker.import(attachment.id, true);
+		}
 		var annotations = attachment.getAnnotations().filter(x => x.annotationType != 'ink');
 		if (!annotations.length) {
 			return;
@@ -5720,11 +5729,13 @@ var ZoteroPane = new function()
 		
 		var annotations = [];
 		for (let attachment of attachments) {
-			try {
-				await Zotero.PDFWorker.import(attachment.id, true);
-			}
-			catch (e) {
-				Zotero.logError(e);
+			if (attachment.isPDFAttachment()) {
+				try {
+					await Zotero.PDFWorker.import(attachment.id, true);
+				}
+				catch (e) {
+					Zotero.logError(e);
+				}
 			}
 			annotations.push(...attachment.getAnnotations().filter(x => x.annotationType != 'ink'));
 		}
@@ -5816,11 +5827,13 @@ var ZoteroPane = new function()
 				continue;
 			}
 			for (let attachment of attachments) {
-				try {
-					await Zotero.PDFWorker.import(attachment.id, true);
-				}
-				catch (e) {
-					Zotero.logError(e);
+				if (attachment.isPDFAttachment()) {
+					try {
+						await Zotero.PDFWorker.import(attachment.id, true);
+					}
+					catch (e) {
+						Zotero.logError(e);
+					}
 				}
 				annotations.push(...attachment.getAnnotations().filter(x => x.annotationType != 'ink'));
 			}
@@ -6080,10 +6093,11 @@ var ZoteroPane = new function()
 	 * @return {Promise<Boolean>} True if relinked successfully or canceled
 	 */
 	this.checkForLinkedFilesToRelink = async function (item) {
-		// Naive split and join implementations that split on any separator and join using forward slashes
-		// OS.Path methods have different behavior depending on the platform, and a naive approach is good enough here
+		const PATH_SEP = Zotero.isWin ? '\\' : '/';
+		
+		// Split on any separator, join with the platform separator for PathUtils
 		let split = path => path.split(/[/\\]/);
-		let join = (...segments) => segments.join('/');
+		let join = (base, ...segments) => [base.replace(/\//g, PATH_SEP), ...segments].join(PATH_SEP);
 		
 		Zotero.debug('Attempting to relink automatically');
 		
@@ -6140,11 +6154,6 @@ var ZoteroPane = new function()
 				throw e;
 			}
 			Zotero.debug('Exists! ' + correctedPath);
-			
-			if (Zotero.isWin) {
-				correctedPath = correctedPath.replace(/\//g, '\\');
-				Zotero.debug('Converted back to Windows path: ' + correctedPath);
-			}
 
 			let otherUnlinked = await Zotero.Items.findMissingLinkedFiles(
 				item.libraryID,
@@ -6159,9 +6168,6 @@ var ZoteroPane = new function()
 				if (!otherParts.length) continue;
 				let otherCorrectedPath = join(basePath, ...otherParts);
 				if (await IOUtils.exists(otherCorrectedPath)) {
-					if (Zotero.isWin) {
-						otherCorrectedPath = otherCorrectedPath.replace(/\//g, '\\');
-					}
 					othersToRelink.set(otherItem, otherCorrectedPath);
 				}
 			}
@@ -6173,8 +6179,9 @@ var ZoteroPane = new function()
 					return true;
 				case 'all':
 					await item.relinkAttachmentFile(correctedPath);
-					await Promise.all([...othersToRelink]
-						.map(([i, p]) => i.relinkAttachmentFile(p)));
+					for (let [otherItem, otherCorrectedPath] of othersToRelink) {
+						await otherItem.relinkAttachmentFile(otherCorrectedPath);
+					}
 					return true;
 				case 'manual':
 					await this.relinkAttachment(item.id);

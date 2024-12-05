@@ -1,6 +1,6 @@
 {
   "name": "zotero",
-  "private": "true",
+  "private": true,
   "version": "7.0.0",
   "description": "Zotero",
   "main": "",
