@@ -14,10 +14,12 @@
 	-moz-box-pack: center;
 	pointer-events: none;
 	-moz-appearance: -moz-window-titlebar;
+	// fx128: cover transparent gap between titlebar and window body
+	margin-bottom: -1px;
 }
 
 #zotero-title-bar {
-	border-top: 1px solid var(--toolbar-field-border-color);
+	border-top: 1px solid transparent;
 }
 
 #toolbar-menubar {

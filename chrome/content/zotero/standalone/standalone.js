@@ -23,7 +23,6 @@
     ***** END LICENSE BLOCK *****
 */
 
-Components.utils.import("resource://gre/modules/Services.jsm");
 
 /**
  * This object contains the various functions for the interface
@@ -97,6 +96,10 @@ const ZoteroStandalone = new function() {
 				.setAttribute('key', Zotero.Keys.getKeyForCommand('copySelectedItemCitationsToClipboard'));
 			document.getElementById('key_copyBibliography')
 				.setAttribute('key', Zotero.Keys.getKeyForCommand('copySelectedItemsToClipboard'));
+			
+			if (Zotero.isMac) {
+				document.getElementById('menu_openHelp').setAttribute('key', 'key_openHelpMac');
+			}
 			
 			ZoteroStandalone.DebugOutput.init();
 			

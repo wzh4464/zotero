@@ -386,7 +386,7 @@ replace_line 'handle: function bch_handle\(cmdLine\) {' 'handle: function bch_ha
   \/\/ TEST_OPTIONS_PLACEHOLDER
   ' modules/BrowserContentHandler.sys.mjs
 # prevent color scheme getting reset to 'light' during printing
-replace_line 'new LightweightThemeConsumer\(document\);' '\/\/new LightweightThemeConsumer\(document\);'  chrome/browser/content/browser/browser.js
+replace_line 'new LightweightThemeConsumer\(document\);' '\/\/new LightweightThemeConsumer\(document\);'  chrome/browser/content/browser/browser-init.js
 export CALLDIR && perl -pi -e 'BEGIN { local $/; open $fh, "$ENV{CALLDIR}/assets/commandLineHandler.js"; $replacement = <$fh>; close $fh; } s/\/\/ TEST_OPTIONS_PLACEHOLDER/$replacement/' modules/BrowserContentHandler.sys.mjs
 
 # Move test files to root directory
@@ -500,16 +500,25 @@ if [ $BUILD_MAC == 1 ]; then
 	
 	# Merge relevant assets from Firefox
 	mkdir "$CONTENTSDIR/MacOS"
-	cp -r "$MAC_RUNTIME_PATH/Contents/MacOS/"!(firefox|firefox-bin|crashreporter.app|pingsender|updater.app) "$CONTENTSDIR/MacOS"
+	cp -r "$MAC_RUNTIME_PATH/Contents/MacOS/"!(firefox|firefox-bin|crashreporter.app|minidump-analyzer|nmhproxy|pingsender|updater.app) "$CONTENTSDIR/MacOS"
 	cp -r "$MAC_RUNTIME_PATH/Contents/Resources/"!(application.ini|browser|defaults|precomplete|removed-files|updater.ini|update-settings.ini|webapprt*|*.icns|*.lproj) "$CONTENTSDIR/Resources"
-
+	
+	# Add our custom ChannelPrefs.framework and change channel if not a source build
+	mkdir "$CONTENTSDIR/Frameworks"
+	tar xvf "$CALLDIR/mac/ChannelPrefs.framework.tar.xz" -C "$CONTENTSDIR/Frameworks"
+	if [ "$UPDATE_CHANNEL" != "source" ]; then
+		"$CALLDIR/mac/set-channel-prefs-channel" "$CONTENTSDIR/Frameworks/ChannelPrefs.framework/ChannelPrefs" source $UPDATE_CHANNEL
+	fi
+	
 	# Use our own launcher
 	check_lfs_file "$CALLDIR/mac/zotero.xz"
 	xz -d --stdout "$CALLDIR/mac/zotero.xz" > "$CONTENTSDIR/MacOS/zotero"
 	chmod 755 "$CONTENTSDIR/MacOS/zotero"
 
 	# TEMP: Custom version of XUL with some backported Mozilla bug fixes
-	cp "$MAC_RUNTIME_PATH/../MacOS/XUL" "$CONTENTSDIR/MacOS/"
+	if [ -n "$custom_components_hash_mac" ]; then
+		cp "$MAC_RUNTIME_PATH/../MacOS/XUL" "$CONTENTSDIR/MacOS/"
+	fi
 
 	# Use our own updater, because Mozilla's requires updates signed by Mozilla
 	cd "$CONTENTSDIR/MacOS"
@@ -574,14 +583,16 @@ if [ $BUILD_MAC == 1 ]; then
 		# Clear extended attributes, which can cause codesign to fail
 		/usr/bin/xattr -cr "$APPDIR"
 
-		# Sign app
-		entitlements_file="$CALLDIR/mac/entitlements.xml"
-		/usr/bin/codesign --force --options runtime --entitlements "$entitlements_file" --sign "$DEVELOPER_ID" \
+		# Sign libraries and updater without entitlements
+		/usr/bin/codesign --force --options runtime --sign "$DEVELOPER_ID" \
 			"$APPDIR/Contents/MacOS/XUL" \
-			"$APPDIR/Contents/MacOS/updater.app/Contents/MacOS/org.mozilla.updater"
-		find "$APPDIR/Contents" -name '*.dylib' -exec /usr/bin/codesign --force --options runtime --entitlements "$entitlements_file" --sign "$DEVELOPER_ID" {} \;
-		find "$APPDIR/Contents" -name '*.app' -exec /usr/bin/codesign --force --options runtime --entitlements "$entitlements_file" --sign "$DEVELOPER_ID" {} \;
-		/usr/bin/codesign --force --options runtime --entitlements "$entitlements_file" --sign "$DEVELOPER_ID" "$APPDIR/Contents/MacOS/zotero"
+			"$APPDIR/Contents/MacOS/updater.app" \
+			"$APPDIR/Contents/Frameworks/ChannelPrefs.framework"
+		find "$APPDIR/Contents" -name '*.dylib' -print0 | xargs -0 /usr/bin/codesign --force --options runtime --sign "$DEVELOPER_ID"
+		
+		# Sign bundled apps and main app bundle
+		entitlements_file="$CALLDIR/mac/entitlements.xml"
+		find "$APPDIR/Contents" -name '*.app' -not -name "updater.app" -print0 | xargs -0 /usr/bin/codesign --force --options runtime --entitlements "$entitlements_file" --sign "$DEVELOPER_ID"
 		
 		# Sign .jnilib (Java native shared library) within LibreOffice extension, since notarization
 		# started failing without this. The .jnilib is within a .jar within the .oxt, so we have to
@@ -591,7 +602,7 @@ if [ $BUILD_MAC == 1 ]; then
 		cd libreoffice-repack
 		unzip -q "$APPDIR/Contents/Resources/integration/libreoffice/Zotero_LibreOffice_Integration.oxt" external_jars/jna.jar
 		unzip -q external_jars/jna.jar com/sun/jna/darwin/libjnidispatch.jnilib
-		/usr/bin/codesign --force --options runtime --entitlements "$entitlements_file" --sign "$DEVELOPER_ID" com/sun/jna/darwin/libjnidispatch.jnilib
+		/usr/bin/codesign --force --options runtime --sign "$DEVELOPER_ID" com/sun/jna/darwin/libjnidispatch.jnilib
 		zip -u external_jars/jna.jar com/sun/jna/darwin/libjnidispatch.jnilib
 		zip -u "$APPDIR/Contents/Resources/integration/libreoffice/Zotero_LibreOffice_Integration.oxt" external_jars/jna.jar
 		cd ..

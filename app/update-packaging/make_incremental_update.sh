@@ -81,7 +81,6 @@ if [ $# = 0 ]; then
   exit 1
 fi
 
-# channel-prefs.js removed for Zotero
 requested_forced_updates='Contents/MacOS/firefox'
 
 while getopts "hqf:" flag
@@ -173,7 +172,7 @@ for ((i=0; $i<$num_oldfiles; i=$i+1)); do
 
     if check_for_add_if_not_update "$f"; then
       # The full workdir may not exist yet, so create it if necessary.
-      mkdir -p `dirname "$workdir/$f"`
+      mkdir -p "$(dirname "$workdir/$f")"
       $XZ $XZ_OPT --compress $BCJ_OPTIONS --lzma2 --format=xz --check=crc64 --force --stdout "$newdir/$f" > "$workdir/$f"
       copy_perm "$newdir/$f" "$workdir/$f"
       make_add_if_not_instruction "$f" "$updatemanifestv3"
@@ -183,7 +182,7 @@ for ((i=0; $i<$num_oldfiles; i=$i+1)); do
 
     if check_for_forced_update "$requested_forced_updates" "$f"; then
       # The full workdir may not exist yet, so create it if necessary.
-      mkdir -p `dirname "$workdir/$f"`
+      mkdir -p "$(dirname "$workdir/$f")"
       $XZ $XZ_OPT --compress $BCJ_OPTIONS --lzma2 --format=xz --check=crc64 --force --stdout "$newdir/$f" > "$workdir/$f"
       copy_perm "$newdir/$f" "$workdir/$f"
       make_add_instruction "$f" "$updatemanifestv3" 1

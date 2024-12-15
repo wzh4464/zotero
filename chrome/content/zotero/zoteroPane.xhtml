@@ -57,8 +57,6 @@
 	</linkset>
 	
 	<script>
-		var {Services} = ChromeUtils.import("resource://gre/modules/Services.jsm");
-		
 		var { Zotero } = ChromeUtils.importESModule("chrome://zotero/content/zotero.mjs");
 		
 		Services.scriptloader.loadSubScript("resource://zotero/require.js", this);
@@ -764,8 +762,7 @@
 							<menuitem id="menu_openHelp"
 									  oncommand="ZoteroStandalone.openHelp();"
 									  label="&productHelp.label;"
-									  accesskey="&productHelp.accesskey;"
-									  key="key_openHelpMac"/>
+									  accesskey="&productHelp.accesskey;"/>
 							<menuitem id="troubleShooting"
 									  accesskey="&helpTroubleshootingInfo.accesskey;"
 									  label="&helpTroubleshootingInfo.label;"

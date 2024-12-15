@@ -34,7 +34,6 @@ const ZOTERO_PROTOCOL_CID = Components.ID("{9BC3D762-9038-486A-9D70-C997AF848A7C
 const ZOTERO_PROTOCOL_CONTRACTID = "@mozilla.org/network/protocol;1?name=" + ZOTERO_SCHEME;
 const ZOTERO_PROTOCOL_NAME = "Zotero Chrome Extension Protocol";
 
-Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("resource://gre/modules/ComponentUtils.jsm");
 const { NetUtil } = ChromeUtils.import("resource://gre/modules/NetUtil.jsm");
 
@@ -978,10 +977,10 @@ function ZoteroProtocolHandler() {
 		this.owner = (secMan.getCodebasePrincipal || secMan.getSimpleCodebasePrincipal)(this.URI);
 		this._isPending = true;
 		
-		var converter = Components.classes["@mozilla.org/intl/scriptableunicodeconverter"].
-			createInstance(Components.interfaces.nsIScriptableUnicodeConverter);
-		converter.charset = "UTF-8";
-		this._stream = converter.convertToInputStream(data);
+		this._stream = Cc["@mozilla.org/io/string-input-stream;1"]
+			.createInstance(Ci.nsIStringInputStream);
+		this._stream.setUTF8Data(data);
+		
 		this.contentLength = this._stream.available();
 	}
 	
@@ -1463,10 +1462,10 @@ AsyncChannel.prototype = {
 				
 				listenerWrapper.onStartRequest(this);
 				
-				let converter = Components.classes["@mozilla.org/intl/scriptableunicodeconverter"]
-					.createInstance(Components.interfaces.nsIScriptableUnicodeConverter);
-				converter.charset = "UTF-8";
-				let inputStream = converter.convertToInputStream(data);
+				let inputStream = Cc["@mozilla.org/io/string-input-stream;1"]
+					.createInstance(Ci.nsIStringInputStream);
+				inputStream.setUTF8Data(data);
+				
 				listenerWrapper.onDataAvailable(this, inputStream, 0, inputStream.available());
 				
 				listenerWrapper.onStopRequest(this, this.status);
