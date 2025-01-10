@@ -930,6 +930,22 @@ Zotero.Sync.Data.Local = {
 									['mtime', 'md5', 'dateAdded', 'dateModified']
 								);
 								
+								// If local object became a child item and remote was added to any
+								// collections, we need to remove the 'collections' changes and add
+								// the parent item to those collections instead
+								if (objectType == 'item'
+										&& !obj.isTopLevelItem()
+										&& (obj.isNote() || obj.isAttachment())) {
+									let collections = result.changes
+										.filter(x => x.field == 'collections' && x.op == 'member-add')
+										.map(x => x.value);
+									if (collections.length) {
+										result.changes = result.changes
+											.filter(x => !(x.field == 'collections' && x.op == 'member-add'));
+										saveOptions.newParentItemCollections = collections;
+									}
+								}
+								
 								// If no changes, just update local version number and mark as synced
 								if (!result.changes.length && !result.conflicts.length) {
 									Zotero.debug("No remote changes to apply to local "
@@ -1031,45 +1047,45 @@ Zotero.Sync.Data.Local = {
 								Zotero.debug(ObjectType + " was deleted locally");
 								
 								switch (objectType) {
-								case 'item':
-									if (jsonData.deleted) {
-										Zotero.debug("Remote item is in trash -- allowing local deletion to propagate");
+									case 'item':
+										if (jsonData.deleted) {
+											Zotero.debug("Remote item is in trash -- allowing local deletion to propagate");
+											results.push({
+												libraryID,
+												key: objectKey,
+												processed: true
+											});
+											return;
+										}
+										
 										results.push({
 											libraryID,
 											key: objectKey,
-											processed: true
+											processed: false,
+											conflict: true,
+											left: {
+												deleted: true,
+												dateDeleted: Zotero.Date.dateToSQL(dateDeleted, true)
+											},
+											right: jsonData
 										});
 										return;
-									}
 									
-									results.push({
-										libraryID,
-										key: objectKey,
-										processed: false,
-										conflict: true,
-										left: {
-											deleted: true,
-											dateDeleted: Zotero.Date.dateToSQL(dateDeleted, true)
-										},
-										right: jsonData
-									});
-									return;
-								
-								// Auto-restore some locally deleted objects that have changed remotely
-								case 'collection':
-								case 'search':
-									Zotero.debug(`${ObjectType} ${objectKey} was modified remotely `
-										+ '-- restoring');
-									await this.removeObjectsFromDeleteLog(
-										objectType,
-										libraryID,
-										[objectKey]
-									);
-									restored = true;
-									break;
-								
-								default:
-									throw new Error("Unknown object type '" + objectType + "'");
+									// Auto-restore some locally deleted objects that have changed remotely
+									case 'collection':
+									case 'search':
+										Zotero.debug(`${ObjectType} ${objectKey} was modified remotely `
+											+ '-- restoring');
+										await this.removeObjectsFromDeleteLog(
+											objectType,
+											libraryID,
+											[objectKey]
+										);
+										restored = true;
+										break;
+									
+									default:
+										throw new Error("Unknown object type '" + objectType + "'");
 								}
 							}
 							
@@ -1539,6 +1555,24 @@ Zotero.Sync.Data.Local = {
 					Zotero.Libraries.get(obj.libraryID).storageDownloadNeeded = true;
 				}
 			}
+			
+			// See explanation in processObjectsFromJSON()
+			if (options.newParentItemCollections) {
+				let parentItem = obj.parentItem;
+				for (let c of options.newParentItemCollections) {
+					parentItem.addToCollection(c);
+				}
+				yield parentItem.save({
+					skipEditCheck: true,
+					skipDateModifiedUpdate: true,
+					skipSelect: true,
+					notifierQueue: options.notifierQueue,
+					// Errors are logged elsewhere, so skip in DataObject.save()
+					errorHandler: function (e) {
+						return;
+					}
+				});
+			}
 		}
 		catch (e) {
 			// For now, allow sync to proceed after all errors
@@ -1586,39 +1620,39 @@ Zotero.Sync.Data.Local = {
 				// Disregard member additions/deletions for different values
 				if (c1.op.startsWith('member-') && c2.op.startsWith('member-')) {
 					switch (c1.field) {
-					case 'collections':
-						if (c1.value !== c2.value) {
-							continue;
-						}
-						break;
-					
-					case 'tags':
-						if (!Zotero.Tags.equals(c1.value, c2.value)) {
-							// If just a type difference, treat as modify with type 0 if
-							// not type 0 in changeset1
-							if (c1.op == 'member-add' && c2.op == 'member-add'
-									&& c1.value.tag === c2.value.tag) {
-								changeset1.splice(i--, 1);
-								// We're in the inner loop without an incrementor for i, so don't go
-								// below 0
-								if (i < 0) i = 0;
-								changeset2.splice(j--, 1);
-								if (c1.value.type > 0) {
-									changeset2.push({
-										field: "tags",
-										op: "member-remove",
-										value: c1.value
-									});
-									changeset2.push({
-										field: "tags",
-										op: "member-add",
-										value: c2.value
-									});
-								}
+						case 'collections':
+							if (c1.value !== c2.value) {
+								continue;
 							}
-							continue;
-						}
-						break;
+							break;
+						
+						case 'tags':
+							if (!Zotero.Tags.equals(c1.value, c2.value)) {
+								// If just a type difference, treat as modify with type 0 if
+								// not type 0 in changeset1
+								if (c1.op == 'member-add' && c2.op == 'member-add'
+										&& c1.value.tag === c2.value.tag) {
+									changeset1.splice(i--, 1);
+									// We're in the inner loop without an incrementor for i, so don't go
+									// below 0
+									if (i < 0) i = 0;
+									changeset2.splice(j--, 1);
+									if (c1.value.type > 0) {
+										changeset2.push({
+											field: "tags",
+											op: "member-remove",
+											value: c1.value
+										});
+										changeset2.push({
+											field: "tags",
+											op: "member-add",
+											value: c2.value
+										});
+									}
+								}
+								continue;
+							}
+							break;
 					}
 				}
 				

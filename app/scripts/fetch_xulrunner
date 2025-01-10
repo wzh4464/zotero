@@ -22,6 +22,7 @@ set -euo pipefail
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 APP_ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 . "$APP_ROOT_DIR/config.sh"
+. "$SCRIPT_DIR/utils.sh"
 cd "$APP_ROOT_DIR"
 
 function usage {
@@ -60,56 +61,6 @@ done
 if [[ $BUILD_MAC == 0 ]] && [[ $BUILD_WIN == 0 ]] && [[ $BUILD_LINUX == 0 ]]; then
 	usage
 fi
-
-function check_line {
-	pattern=$1
-	if ! egrep -q "$pattern" "$file"; then
-		echo "$pattern" not found in "$file" -- aborting 2>&1
-		exit 1
-	fi
-}
-
-function replace_line {
-	pattern=$1
-	replacement=$2
-	file=$3
-	
-	if egrep -q "$pattern" "$file"; then
-		perl -pi -e "s/$pattern/$replacement/" "$file"
-	else
-		echo "$pattern" not found in "$file" -- aborting 2>&1
-		exit 1
-	fi
-}
-
-function remove_line {
-	pattern=$1
-	file=$2
-	
-	if egrep -q "$pattern" "$file"; then
-		egrep -v "$pattern" "$file" > "$file.tmp"
-		mv "$file.tmp" "$file"
-	else
-		echo "$pattern" not found in "$file" -- aborting 2>&1
-		exit 1
-	fi
-}
-
-function remove_between {
-	start_pattern=$1
-	end_pattern=$2
-	file=$3
-	
-	if egrep -q "$start_pattern" "$file" && egrep -q "$end_pattern" "$file"; then
-		perl -ni -e '
-		if (/'"$start_pattern"'/) { $skip = 1; next; }
-		elsif ($skip && /'"$end_pattern"'/) { $skip = 0; next; }
-		print unless $skip;' "$file"
-	else
-		echo "$start_pattern" and "$end_pattern" not found in "$file" -- aborting 2>&1
-		exit 1
-	fi
-}
 
 function get_utf16_chars {
 	str=$(echo -n "$1" | xxd -p | fold -w 2 | sed -r 's/(.+)/\\\\x{\1}\\\\x{00}/')
@@ -237,7 +188,7 @@ function modify_omni {
       manifest.web_accessible_resources = undefined;
       manifest.experiment_apis = {};
     }' modules/Extension.sys.mjs
-    
+	
 	# Use applications.zotero instead of applications.gecko
 	replace_line 'let bss = manifest.applications\?.gecko' 'let bss = manifest.applications?.zotero' modules/addons/XPIInstall.sys.mjs
 	replace_line 'manifest.applications\?.gecko' 'manifest.applications?.zotero' modules/Extension.sys.mjs
@@ -415,9 +366,12 @@ function modify_omni {
          document.documentElement.appendChild(popupset);
        }
        popupset.appendChild(this._autoScrollPopup);' chrome/toolkit/content/global/elements/browser-custom-element.js
-    
-    # Remove non-native text input styles
-    remove_between 'html\|input\:where\(' '^}' chrome/toolkit/skin/classic/global/global-shared.css
+	
+	# Remove aria-autocomplete unnecessarily added to search-textbox to not confuse screen readers
+	remove_line 'this.inputField.setAttribute\("aria-autocomplete' chrome/toolkit/content/global/elements/search-textbox.js
+
+	# Remove non-native text input styles
+	remove_between 'html\|input\:where\(' '^}' chrome/toolkit/skin/classic/global/global-shared.css
 	
 	zip -qr9XD omni.ja *
 	mv omni.ja ..

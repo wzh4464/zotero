@@ -20,6 +20,7 @@
 
 CALLDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 . "$CALLDIR/config.sh"
+. "$CALLDIR/scripts/utils.sh"
 
 if [ "`uname`" = "Darwin" ]; then
 	MAC_NATIVE=1
@@ -53,19 +54,6 @@ function cleanup {
 	rm -rf $BUILD_DIR
 }
 trap cleanup EXIT
-
-function replace_line {
-	pattern=$1
-	replacement=$2
-	file=$3
-	
-	if egrep -q "$pattern" "$file"; then
-		perl -pi -e "s/$pattern/$replacement/" "$file"
-	else
-		echo "$pattern" not found in "$file" -- aborting 2>&1
-		exit 1
-	fi
-}
 
 function abspath {
 	echo $(cd $(dirname $1); pwd)/$(basename $1);
@@ -363,6 +351,7 @@ for locale in `ls chrome/locale/`; do
 	cp "$CALLDIR/assets/branding/locale/brand.ftl" localization/$locale/branding/brand.ftl
 	
 	mkdir -p localization/$locale/toolkit/global
+	cp chrome/locale/$locale/zotero/mozilla/arrowscrollbox.ftl localization/$locale/toolkit/global
 	cp chrome/locale/$locale/zotero/mozilla/textActions.ftl localization/$locale/toolkit/global
 	cp chrome/locale/$locale/zotero/mozilla/wizard.ftl localization/$locale/toolkit/global
 	
@@ -385,9 +374,10 @@ cat "$CALLDIR/assets/chrome.manifest" >> chrome.manifest
 replace_line 'handle: function bch_handle\(cmdLine\) {' 'handle: function bch_handle(cmdLine) {
   \/\/ TEST_OPTIONS_PLACEHOLDER
   ' modules/BrowserContentHandler.sys.mjs
-# prevent color scheme getting reset to 'light' during printing
-replace_line 'new LightweightThemeConsumer\(document\);' '\/\/new LightweightThemeConsumer\(document\);'  chrome/browser/content/browser/browser-init.js
 export CALLDIR && perl -pi -e 'BEGIN { local $/; open $fh, "$ENV{CALLDIR}/assets/commandLineHandler.js"; $replacement = <$fh>; close $fh; } s/\/\/ TEST_OPTIONS_PLACEHOLDER/$replacement/' modules/BrowserContentHandler.sys.mjs
+
+# Prevent color scheme getting reset to 'light' during printing
+replace_line 'new LightweightThemeConsumer\(document\);' '\/\/new LightweightThemeConsumer\(document\);'  chrome/browser/content/browser/browser-init.js
 
 # Move test files to root directory
 if [ $include_tests -eq 1 ]; then
